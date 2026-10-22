@@ -307,7 +307,8 @@ def sps_table_args(table, env=None):
         print(f'DSPARK_SPS_TABLE={table} ignored: compact ragged verify is '
               'incompatible with this model\'s Engram layers and crashes at '
               'CUDA-graph capture. Staying on the verify-all schedule. Set '
-              'DSPARK_SPS_ALLOW_ENGRAM=1 only after the engine path is fixed.',
+              'DSPARK_SPS_ALLOW_ENGRAM=1 in EXTRA_CONTAINER_ENV only after the '
+              'engine path is fixed.',
               flush=True)
         return []
     return [

@@ -27,6 +27,7 @@ jobs:
           python3 tests/test_patch_v41_tool_constraint.py
           python3 -m unittest \
             tests/test_sps_engram_guard.py \
+            tests/test_stop_nfs_filter.py \
             tests/test_required_sglang_args.py \
             tests/test_launcher_build.py \
             tests/test_sglang_bounded_replay_patch.py \
@@ -111,6 +112,7 @@ jobs:
             scripts/verify_sglang_dsv41_draft_metadata_glue.py \
             scripts/test_sglang_dsv41_draft_metadata_glue.py \
             tests/test_sps_engram_guard.py \
+            tests/test_stop_nfs_filter.py \
             tests/test_b12x_memory_requirements.py \
             tests/test_v41_tool_constraint.py
           bash -n start.sh stop.sh scripts/fetch-sglang-canary.sh
