@@ -21,12 +21,15 @@ class Dsv41DefaultThinkingPackagingTests(unittest.TestCase):
         self.assertIn("sglang-45762-dsv41-default-thinking-parser.patch", fetch)
         self.assertIn("--fuzz=0", fetch)
 
-    def test_images_repeat_verifier_semantics_and_packaging(self):
+    def test_fetch_checks_intermediate_semantics_and_images_check_final_scope(self):
+        fetch = (ROOT / "scripts/fetch-sglang-canary.sh").read_text()
+        self.assertIn("verify_sglang_dsv41_default_thinking.py", fetch)
+        self.assertIn("test_sglang_dsv41_default_thinking.py", fetch)
         for name in ("Dockerfile.canary", "Dockerfile.canary-roce"):
             with self.subTest(name=name):
                 source = (ROOT / name).read_text()
-                self.assertIn("verify_sglang_dsv41_default_thinking.py", source)
-                self.assertIn("test_sglang_dsv41_default_thinking.py", source)
+                self.assertIn("verify_sglang_dsv41_thinking_parity.py", source)
+                self.assertIn("test_sglang_dsv41_thinking_parity.py", source)
                 self.assertIn(
                     "test_sglang_dsv41_default_thinking_patch.py", source
                 )

@@ -29,6 +29,9 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
   backport lets the startup-autotuned FlashInfer CuTeDSL MXFP8 tactics run below 4,096 rows. Upstream's
   V4.1 result was about -2% step time at 16-64 requests/rank and flat below that range. It is carried as
   source-qualified code, not presented as a C1 or GB10 result until the next same-boot A/B.
+- SGLang #45804 supersedes the broad parser-family fallback in #45762: the env default belongs only to
+  native DeepSeek encoders, and Responses must mirror Chat. The scoped three-file adaptation is carried
+  after #45762 with a negative Jinja control; it is a correctness fix, not a performance claim.
 - MiaAI-Lab's latest public recipe head (`64b02de`, 2026-10-17) adds switchless TP4 packaging and safety
   work but no newer decode lever missing from this repository. J-M's Round-2 SGLang sweep found a 1 GiB
   indexer-logits budget useful for memory robustness, while its scheduling changes did not improve decode.
