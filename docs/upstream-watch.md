@@ -5,6 +5,13 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #44751](https://github.com/sgl-project/sglang/pull/44751) is carried as
+  a zero-fuzz 1017 encoder adaptation. It matches DeepSeek's updated ordering
+  for images inside tool results and keeps assistant reasoning across a
+  tool-result-only user message. The pinned recipe additionally deep-copies
+  context/messages before its image-placeholder sanitizer, retaining the local
+  no-input-mutation contract. This is API correctness for the served 1017
+  checkpoint, not a TPS claim.
 - The active switchless-ring overlay now carries sparkring's bounded fixes
   `2d83bb6`, `e4d0921` and `f91b5c8`: atomically sampled proxy diagnostics,
   precise system-scope/poll-budget contracts, and a timeout flag independent of

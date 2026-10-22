@@ -18,9 +18,10 @@
    content, which `/v1/chat/completions` accepts natively. Rejected with HTTP 400.
 
 Both branches become sanitize-and-warn, so such requests keep serving. The rewrite is in
-place on a ``copy.deepcopy``'d message (``process_image_messages`` copies before validating),
-so it cannot leak into the caller's dict or a cache key. Real image content blocks are
-untouched.
+place on a ``copy.deepcopy``'d message: the SGLang #44751 adaptation copies context and
+messages before its early validation, while the older layout copied inside
+``process_image_messages``. It therefore cannot leak into the caller's dict or a cache key.
+Real image content blocks are untouched.
 
 Idempotent, per anchor. Exits non-zero if an anchor no longer matches, so a base-image change
 cannot silently drop the fix. Optionally takes the target path as argv[1].
