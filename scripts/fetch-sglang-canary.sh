@@ -14,6 +14,7 @@ PATCH_INLINE_SYSTEM="$ROOT/patches/sglang-43549-dsv41-inline-system.patch"
 PATCH_DSPARK_ACCEPT="$ROOT/patches/sglang-45663-dspark-accept-outputs.patch"
 PATCH_DSPARK_SOFTMAX_CLAMP="$ROOT/patches/sglang-45518-dspark-softmax-clamp.patch"
 PATCH_DSPARK_RESTAGE="$ROOT/patches/sglang-45450-dspark-param-restage.patch"
+PATCH_MXFP8_DECODE_TACTICS="$ROOT/patches/sglang-45630-mxfp8-decode-tactics.patch"
 PATCH_DSV41_INDEXER_INPLACE="$ROOT/patches/sglang-45745-dsv41-indexer-inplace.patch"
 PATCH_DSV41_BLOCKED_DEQUANT="$ROOT/patches/sglang-45793-dsv41-blocked-kv-dequant.patch"
 PATCH_DSV41_ALIGN_WIDTH="$ROOT/patches/sglang-45794-dsv41-align-indexer-width.patch"
@@ -32,6 +33,8 @@ DSPARK_SOFTMAX_CLAMP_REF="8e85d6cfa9fc9025942c4faf07c362c1ce3d06f4"
 DSPARK_SOFTMAX_CLAMP_PATCH_SHA256="b7e4e6abc1fba68e12ac33effe77e9df37f680b3334d58e98018c228e21aafdf"
 DSPARK_PARAM_RESTAGE_REF="20189751de186f394abe850b1ad48087df32eb77"
 DSPARK_PARAM_RESTAGE_PATCH_SHA256="30a3d02028d1db1974456bda9383cdebf7bbaa0c6e1b9e3cc010d3b0d2b9acd9"
+MXFP8_DECODE_TACTICS_REF="741aea0ab6c51ccfbb862203a5a4e4aeaf7e8466"
+MXFP8_DECODE_TACTICS_PATCH_SHA256="152571d8705b2fe9b505bd0441c7fecaf1d85ac981553272d85fcb76c25224ba"
 DSV41_INDEXER_INPLACE_REF="3458c1f1900fbbaffc237d74491f30e6f8cf288c"
 DSV41_INDEXER_INPLACE_PATCH_SHA256="03ec9856e93ff4c34f10ca08585a06d7f0bf64d8c1742b3854a10d8929d371eb"
 DSV41_BLOCKED_DEQUANT_REF="0de6dd957f4da0b0655ef6d41bfd4b0593a08d12"
@@ -125,6 +128,11 @@ patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSPARK_RESTAGE"
 patch --silent --fuzz=0 -p1 < "$PATCH_DSPARK_RESTAGE"
 python3 "$ROOT/scripts/verify_sglang_dspark_param_restage.py" "$DST/python"
 python3 "$ROOT/scripts/test_sglang_dspark_param_restage.py" "$DST/python"
+echo "applying SGLang #45630 tuned MXFP8 tactics at decode sizes ..."
+printf '%s  %s\n' "$MXFP8_DECODE_TACTICS_PATCH_SHA256" "$PATCH_MXFP8_DECODE_TACTICS" | shasum -a 256 -c -
+patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_MXFP8_DECODE_TACTICS"
+patch --silent --fuzz=0 -p1 < "$PATCH_MXFP8_DECODE_TACTICS"
+python3 "$ROOT/scripts/verify_sglang_mxfp8_decode_tactics.py" "$DST/python"
 echo "applying SGLang #45745 in-place V4.1 indexer scoring ..."
 printf '%s  %s\n' "$DSV41_INDEXER_INPLACE_PATCH_SHA256" "$PATCH_DSV41_INDEXER_INPLACE" | shasum -a 256 -c -
 patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_INDEXER_INPLACE"
@@ -161,9 +169,10 @@ printf '%s\n' \
   "45663 $DSPARK_DRAFT_PARAMS_REF helper-sha256=$DSPARK_DRAFT_PARAMS_SHA256 accept-patch-sha256=b44e8522f386acf02050254307ad71a8f1584af3b5943207faa7c0f0c6ee5fe9" \
   "45518 $DSPARK_SOFTMAX_CLAMP_REF patch-sha256=$DSPARK_SOFTMAX_CLAMP_PATCH_SHA256" \
   "45450 $DSPARK_PARAM_RESTAGE_REF patch-sha256=$DSPARK_PARAM_RESTAGE_PATCH_SHA256" \
+  "45630 $MXFP8_DECODE_TACTICS_REF patch-sha256=$MXFP8_DECODE_TACTICS_PATCH_SHA256" \
   "45745 $DSV41_INDEXER_INPLACE_REF patch-sha256=$DSV41_INDEXER_INPLACE_PATCH_SHA256" \
   "45793 $DSV41_BLOCKED_DEQUANT_REF patch-sha256=$DSV41_BLOCKED_DEQUANT_PATCH_SHA256" \
   "45794 $DSV41_ALIGN_WIDTH_REF patch-sha256=$DSV41_ALIGN_WIDTH_PATCH_SHA256" \
   "45762 $DSV41_DEFAULT_THINKING_REF patch-sha256=$DSV41_DEFAULT_THINKING_PATCH_SHA256" > PATCHES
 du -sh python
-echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45745/#45793/#45794/#45762 backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."
+echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762 backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."

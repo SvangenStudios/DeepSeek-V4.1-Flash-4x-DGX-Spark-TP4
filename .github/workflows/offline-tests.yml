@@ -40,6 +40,7 @@ jobs:
             tests/test_sglang_dspark_accept_outputs_patch.py \
             tests/test_sglang_dspark_softmax_clamp_patch.py \
             tests/test_sglang_dspark_param_restage_patch.py \
+            tests/test_sglang_mxfp8_decode_tactics_patch.py \
             tests/test_sglang_dsv41_indexer_inplace_patch.py \
             tests/test_sglang_dsv41_blocked_kv_dequant_patch.py \
             tests/test_sglang_dsv41_align_indexer_width_patch.py \
@@ -69,6 +70,7 @@ jobs:
             scripts/test_sglang_dspark_softmax_clamp.py \
             scripts/verify_sglang_dspark_param_restage.py \
             scripts/test_sglang_dspark_param_restage.py \
+            scripts/verify_sglang_mxfp8_decode_tactics.py \
             scripts/verify_sglang_dsv41_indexer_inplace.py \
             scripts/verify_sglang_dsv41_blocked_kv_dequant.py \
             scripts/test_sglang_dsv41_blocked_kv_dequant.py \

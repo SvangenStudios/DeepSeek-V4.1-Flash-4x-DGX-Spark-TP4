@@ -25,6 +25,10 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
   copied merely to increase patch count.
 - SGLang #44632 and #45633 primarily improve larger verify/query row counts. The current C1 path already
   falls inside the old fused limits; they are concurrency candidates, not a route from ~90 to 100 C1 tok/s.
+- SGLang #45630 is the smaller concurrency lever that does fit this pinned tree: the exact one-line
+  backport lets the startup-autotuned FlashInfer CuTeDSL MXFP8 tactics run below 4,096 rows. Upstream's
+  V4.1 result was about -2% step time at 16-64 requests/rank and flat below that range. It is carried as
+  source-qualified code, not presented as a C1 or GB10 result until the next same-boot A/B.
 - MiaAI-Lab's latest public recipe head (`64b02de`, 2026-10-17) adds switchless TP4 packaging and safety
   work but no newer decode lever missing from this repository. J-M's Round-2 SGLang sweep found a 1 GiB
   indexer-logits budget useful for memory robustness, while its scheduling changes did not improve decode.
