@@ -48,6 +48,7 @@ jobs:
             tests/test_sglang_dsv41_thinking_parity_patch.py \
             tests/test_sglang_dsv41_window_history_src_patch.py \
             tests/test_sglang_dsv41_fused_window_layout_patch.py \
+            tests/test_sglang_dsv41_idle_swa_store_patch.py \
             tests/test_b12x_memory_requirements.py \
             tests/test_remote_dotenv.py \
             tests/test_upstream_launcher_ports.py
@@ -87,6 +88,8 @@ jobs:
             scripts/test_sglang_dsv41_window_history_src.py \
             scripts/verify_sglang_dsv41_fused_window_layout.py \
             scripts/test_sglang_dsv41_fused_window_layout.py \
+            scripts/verify_sglang_dsv41_idle_swa_store.py \
+            scripts/test_sglang_dsv41_idle_swa_store.py \
             tests/test_sps_engram_guard.py \
             tests/test_b12x_memory_requirements.py \
             tests/test_v41_tool_constraint.py

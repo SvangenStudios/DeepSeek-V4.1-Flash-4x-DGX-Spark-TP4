@@ -40,6 +40,10 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
   Triton launches replace eager pointwise request-window query/history metadata construction on CUDA,
   while CPU and HIP retain the reference path. Upstream's isolated GB300 timing was about 0.89 to 0.41 ms
   per call at both 4K and 32K rows; local GPU parity and end-to-end effect remain unmeasured.
+- SGLang #45586/#45699 idle-store safety is carried with extracted production-method tests. It prevents
+  idle DSpark/DP rows from consuming stale or absent attention metadata, including the request-window
+  path introduced by encoder replay. This completes the safety side of the optional encoder-replay lane;
+  the default launch still uses decoder replay only.
 - SGLang #45577/#45741 index-K plan reuse depends on the newer modular `v41_indexer` plan types absent
   from this pin. #44465 sharded accept is still an AMD/HIP draft and the served greedy path already uses
   TP-sharded greedy selection. Both remain HOLD/watch rather than being copied across incompatible APIs.
