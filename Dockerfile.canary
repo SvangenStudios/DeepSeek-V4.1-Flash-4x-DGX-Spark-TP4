@@ -70,8 +70,6 @@ RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_fused_window_layout.py /sgl-w
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_fused_window_layout.py
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_idle_swa_store.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_idle_swa_store.py /sgl-workspace/sglang/python
-RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_grouped_verify_indexer.py /sgl-workspace/sglang/python
-RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_grouped_verify_indexer.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_draft_metadata_glue.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_draft_metadata_glue.py /sgl-workspace/sglang/python
 COPY runtime/sglang-canary/upstream-tests/test_parallel_prompt_encode.py /opt/dsv41/upstream-tests/test_parallel_prompt_encode.py
@@ -110,7 +108,6 @@ RUN PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_anthropic_thinki
  && python3 /opt/dsv41/tests/test_sglang_dsv41_window_history_src_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_fused_window_layout_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_idle_swa_store_patch.py \
- && python3 /opt/dsv41/tests/test_sglang_dsv41_grouped_verify_indexer_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_draft_metadata_glue_patch.py \
  && DSV41_PREFILL_BYPASS_SOURCE_ROOT=/sgl-workspace/sglang/python/sglang/srt/managers DSV41_PREFILL_BYPASS_EXPECT=supported PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_prefill_bypass.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_thinking_alias.py \

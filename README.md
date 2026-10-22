@@ -182,7 +182,7 @@ This repository is a downstream profile of **[MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-
 
 Other work this profile builds on:
 
-- **kpham-sgl**, [sgl-project/sglang#39187](https://github.com/sgl-project/sglang/pull/39187): the bounded dense-indexer prefill transient, backported here as `adapter/indexer_chunked*.py`; and [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251), whose grouped static-verify full scans are adapted to the pinned V4.1 indexer in `patches/sglang-45251-grouped-verify-indexer.patch`.
+- **kpham-sgl**, [sgl-project/sglang#39187](https://github.com/sgl-project/sglang/pull/39187): the bounded dense-indexer prefill transient, backported here as `adapter/indexer_chunked*.py`.
 - **BBuf** and the SGLang `dsv4.1` branch contributors ([#39370](https://github.com/sgl-project/sglang/pull/39370), [#39646](https://github.com/sgl-project/sglang/pull/39646), [#39648](https://github.com/sgl-project/sglang/pull/39648), [#39653](https://github.com/sgl-project/sglang/pull/39653)): the decode kernel work in the optional `Dockerfile.canary` image.
 - **Vineel Bhat, Claude Fable 5.1 and hnyls2002**, [SGLang #41303](https://github.com/sgl-project/sglang/pull/41303): keeping a full SWA window for short decoder bounded-replay extends and holding the window back from ordinary prefix-cache matches; backported to the pinned tree in `patches/sglang-41303-bounded-replay-window.patch`.
 - **Yi (Vincent) Zhong**, [SGLang #42901](https://github.com/sgl-project/sglang/pull/42901): avoiding discarded layer-20 indexer, attention and MoE work on early prompt rows under decoder bounded replay. The adaptation for the pinned pre-`HcState` tree is in `patches/sglang-42901-layer20-tail.patch`; it is source-qualified but has not yet been benchmarked on GB10.

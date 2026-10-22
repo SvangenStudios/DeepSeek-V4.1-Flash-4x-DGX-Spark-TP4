@@ -48,13 +48,17 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
   outside static DSpark/FlashMLA without request windows, CP or online C128.
   Upstream makes this small seam optimization default-on, but reports it only
   as part of a broader GB300 stack; it awaits a same-boot GB10 A/B here.
-- [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251) is carried as a bounded
-  pinned-tree adaptation. Static DSpark verification reshapes six query rows into one request
-  before the ratio-1/ratio-2 candidate-source and direct-fallback full scans; the C4 indexer,
-  ragged verify and normal decode/prefill stay one-row-per-request. The SM120 schedule chunks are
-  aligned to the group so no request straddles plans. Upstream measured the four 128K scans at 1.27 to 0.47 ms and the whole
-  DSpark cycle at 22.57 to 21.57 ms at c64. Treat it as a long-context/concurrency canary until a
-  GB10 A/B; it is not expected to move the short C1 column materially.
+- [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251) was carried for a day and is
+  **dropped**. Its pinned-tree adaptation (static DSpark verify grouped six query rows per request
+  before the ratio-1/ratio-2 full indexer scans) hung every TP rank on GB10: a greedy native
+  `/generate` with `return_logprob` on the 18,000-token code text of `scripts/kld_long_texts.json`
+  never finished its first decode steps (GPUs at 96 %, all schedulers waiting on the step's copy
+  event, NCCL watchdog after 10 minutes), every time. Found by bisecting the 26 backport steps of
+  `scripts/fetch-sglang-canary.sh` with thin image overlays on 2026-10-22: the tree with the first
+  24 steps answers the request in 7 s, adding #45251 hangs it, and the full tree without #45251
+  answers it. It was never measured on GB10 and upstream sized it for c64 128K contexts, so nothing
+  is lost at the context and concurrency this recipe serves. Root cause in the grouped DeepGEMM
+  `next_n` path not established.
 - [SGLang #45807](https://github.com/sgl-project/sglang/pull/45807) fuses the BF16 Torch
   prefill-indexer score epilogue and reports a 21% input-throughput gain on H200, but this recipe's
   active prefill path is the FP4 DeepGEMM scorer. It remains HOLD/watch rather than being copied

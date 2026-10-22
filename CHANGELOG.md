@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Drop the SGLang #45251 grouped static-verify indexer backport: it hung every TP rank in decode
+  on a greedy `/generate` with `return_logprob` (the 18,000-token code text of the long KL panel),
+  every time, while chat traffic passed. Bisected on the fleet over the 26 backport steps with
+  thin overlays of the fix image: 24 steps answer in 7 s, adding #45251 hangs, all steps without
+  it answer (prefill SP on, long and short KL panels against stable-1017: continuation KL 0.0067
+  and 0.0073, PASS). It had never been measured on GB10.
+
 - Fix `DSV41_PREFILL_SP=1` on the current canary images. The adapter hash-pins
   the engine functions it copies or wraps; the #42901 layer-20 tail (PR #24)
   and #45301 (PR #48) changed two of them, so the adapter refused at import and
@@ -68,14 +75,6 @@
   request windows, context parallelism, online C128 MTP, TRT-LLM and every
   backend that does not explicitly opt in. Upstream reports this as a small
   default-on seam optimization; no local GB10 TPS claim is made before A/B.
-- Adapt kpham-sgl's merged SGLang #45251 for the pinned V4.1 indexer: static
-  DSpark verification groups the six query rows belonging to one request before
-  each full cache scan, so the paged index-K cache is traversed per request
-  instead of once per draft row. Ragged verification and ordinary
-  decode/prefill keep the original one-row layout. Upstream measured four
-  128K-context scans at 1.27 to 0.47 ms and a DSpark cycle at 22.57 to 21.57 ms
-  at concurrency 64; this is a long-context/concurrency canary, not a local
-  GB10 or C1 performance claim.
 - Adapt hnyls2002's merged SGLang #45586 and #45699 idle-store fixes. An idle
   forward now returns before reading stale or unset attention metadata: with an
   encoder-replay request window it activates a cached idle layout of the right

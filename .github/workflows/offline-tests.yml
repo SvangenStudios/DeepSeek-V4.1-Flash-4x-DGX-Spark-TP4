@@ -54,7 +54,6 @@ jobs:
             tests/test_sglang_dsv41_window_history_src_patch.py \
             tests/test_sglang_dsv41_fused_window_layout_patch.py \
             tests/test_sglang_dsv41_idle_swa_store_patch.py \
-            tests/test_sglang_dsv41_grouped_verify_indexer_patch.py \
             tests/test_sglang_dsv41_draft_metadata_glue_patch.py \
             tests/test_b12x_memory_requirements.py \
             tests/test_roce_ring.py \
@@ -107,8 +106,6 @@ jobs:
             scripts/test_sglang_dsv41_fused_window_layout.py \
             scripts/verify_sglang_dsv41_idle_swa_store.py \
             scripts/test_sglang_dsv41_idle_swa_store.py \
-            scripts/verify_sglang_dsv41_grouped_verify_indexer.py \
-            scripts/test_sglang_dsv41_grouped_verify_indexer.py \
             scripts/verify_sglang_dsv41_draft_metadata_glue.py \
             scripts/test_sglang_dsv41_draft_metadata_glue.py \
             tests/test_sps_engram_guard.py \
