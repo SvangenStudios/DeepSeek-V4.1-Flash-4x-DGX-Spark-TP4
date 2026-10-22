@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Port three bounded RoCEnante fixes from FujitsuPolycom/sparkring into the
+  active switchless-ring overlay. Kernel timeout state now has a flag separate
+  from the uint32 sequence, so a failure at sequence zero remains visible after
+  wrap; host diagnostics render sequence/epoch values unsigned. Proxy counters
+  sampled from Python are C atomics, and the PTX/poll-budget contracts are
+  documented precisely. CuTe kernel cache versions advance to 3. CPU simulation
+  covers both collectives, both path counts and the uint32 boundary cases; no
+  transport scheduling, model math or claimed TPS changes.
 - Adapt Yangmin Li's second SGLang #45450 commit (`1f8e4f3e`): the static
   DSpark draft runner now captures its device-only attention-metadata prep in
   the existing metadata glue graph. The port rebinds `out_cache_loc` to the

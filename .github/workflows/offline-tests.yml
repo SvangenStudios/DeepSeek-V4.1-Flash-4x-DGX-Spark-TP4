@@ -52,6 +52,7 @@ jobs:
             tests/test_sglang_dsv41_grouped_verify_indexer_patch.py \
             tests/test_sglang_dsv41_draft_metadata_glue_patch.py \
             tests/test_b12x_memory_requirements.py \
+            tests/test_roce_ring.py \
             tests/test_remote_dotenv.py \
             tests/test_upstream_launcher_ports.py
       - name: Syntax checks
