@@ -5,6 +5,28 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251) is carried as a bounded
+  pinned-tree adaptation. Static DSpark verification reshapes six query rows into one request
+  before the ratio-1/ratio-2 candidate-source and direct-fallback full scans; the C4 indexer,
+  ragged verify and normal decode/prefill stay one-row-per-request. The SM120 schedule chunks are
+  aligned to the group so no request straddles plans. Upstream measured the four 128K scans at 1.27 to 0.47 ms and the whole
+  DSpark cycle at 22.57 to 21.57 ms at c64. Treat it as a long-context/concurrency canary until a
+  GB10 A/B; it is not expected to move the short C1 column materially.
+- [SGLang #45807](https://github.com/sgl-project/sglang/pull/45807) fuses the BF16 Torch
+  prefill-indexer score epilogue and reports a 21% input-throughput gain on H200, but this recipe's
+  active prefill path is the FP4 DeepGEMM scorer. It remains HOLD/watch rather than being copied
+  onto a route that does not execute.
+- [SGLang #45633](https://github.com/sgl-project/sglang/pull/45633)'s every-row-count q-norm
+  fusion requires the FlashInfer CuTeDSL MXFP8 backend. The production profile explicitly selects
+  FlashInfer CUTLASS and the adapter intercepts that GEMM with b12x, so the fusion is inactive here.
+  Activating it would be a backend-route experiment, not a safe isolated backport; keep it on HOLD.
+- [christopherowen/spark-ds41f](https://github.com/christopherowen/spark-ds41f) demonstrates a
+  substantial Apache-2.0 TileLang alternative: its published TP4 full-weight comparison improves
+  decode steps by roughly 6-8% and prefill by roughly 9-14% over b12x at unchanged KV capacity.
+  The implementation is a vLLM-specific multi-thousand-line patch stack plus a patched TileLang
+  compiler and TileKernels/SparkNet, not a portable SGLang hunk. It is the highest-value alternative
+  engine lane on HOLD for a separately reproducible build, not something to blend blindly into this
+  pinned runtime.
 - [SGLang #42901](https://github.com/sgl-project/sglang/pull/42901) is the strongest small backport
   found for the active decoder-bounded-replay profile. It writes the last KV-source layer's compressed
   KV for the full prompt, then runs layer 20's indexer, attention and MoE only on the final 128 rows.
