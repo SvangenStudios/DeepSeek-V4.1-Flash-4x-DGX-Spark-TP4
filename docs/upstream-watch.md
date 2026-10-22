@@ -5,6 +5,43 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #44923](https://github.com/sgl-project/sglang/pull/44923) (open, head
+  `6e0355d9`) is carried. `SamplingBatchInfo.merge_batch` could only clear
+  `is_all_greedy`, and `filter_batch` never set it again, so a greedy decode
+  batch that had once held a sampled request stayed on DSpark's eager accept
+  path after that request finished. Per-row CPU flags now refresh both batch
+  flags on filter with no device sync. Token selection does not change; the
+  effect is that the folded verify is eligible again. Not yet measured on GB10.
+- [SGLang #42861](https://github.com/sgl-project/sglang/pull/42861) (open) decodes FP4
+  indexer keys with selects and an exponent-field bitcast instead of `exp2`, with
+  the same output. In this pin the changed helper lives in
+  `sm90_fp4_indexer.py`, and its only caller is the Hopper decode branch of
+  `_low_ratio_index_topk` (`_is_sm100_or_newer()` is false). GB10 is
+  capability 12.1 and takes DeepGEMM `fp4_paged_mqa_logits`, so the port would
+  be dead code here. Upstream measured it through `fp4_index_logits_paged` (from
+  #41251, not in this pin) on SM120. HOLD until a rebase moves SM12x decode onto
+  the Triton paged scorer.
+- [SGLang #42864](https://github.com/sgl-project/sglang/pull/42864) (open) replaces the
+  serial mHC split-K reduce with a vectorized `tl.sum` reduce and uses 160 K slices
+  at decode. Both are gated to `device_sm == 120`, so a faithful port does
+  nothing on GB10 (SM121). The decode flag is passed through the `HcState`
+  model code, which this pin does not have. Enabling it on SM121 would change
+  the summation order, and greedy output with it. It would also change
+  `hc_mix_stats_sinkhorn` and `_num_slices_for`, which `adapter/hc_fused.py`
+  hash-pins. That adapter's exactness argument and first-call self-check assume
+  the serial slice-order reduce, so with the new reduce `DSV41_HC_FUSED` would
+  fall back to stock for the whole process. HOLD: it needs a GB10 timing, a KL
+  gate, and a matching change to `hc_fused`.
+- [SGLang #45086](https://github.com/sgl-project/sglang/pull/45086) (open) adds the row
+  count to `do_not_specialize` on the mHC split-K kernels, which avoids Triton
+  recompiles in the middle of serving (bit-identical output). Here
+  `_hc_mix_stats_partial_kernel` and `_hc_mix_reduce_sinkhorn_kernel` are
+  source-pinned by `adapter/hc_fused.py`, and the decorator is part of the hashed
+  source, so the image build's adapter-pin test would fail. The bf16x3 kernel
+  sits in a separate file in this pin. Integer specialization creates at most
+  three variants per kernel (`== 1`, `% 16 == 0`, other), and CUDA-graph capture
+  and warmup usually compile all three. HOLD for an owner-approved re-pin of
+  `hc_fused._EXPECTED`.
 - [SGLang #43448](https://github.com/sgl-project/sglang/pull/43448) is carried
   as a small startup robustness fix. The pinned MHC prewarm passed
   `chunked_prefill_size` directly into its bucket builder; `-1`, `0` or unset

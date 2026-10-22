@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- Backport Divy (divyvasal) and Claude Opus 5.5's open SGLang #44923 (head
+  `6e0355d9`): the sampling info keeps a CPU greedy flag per row, and
+  `filter_batch` recomputes `is_all_greedy` / `is_any_greedy` from the rows
+  that remain. Before, a
+  merge could only clear `is_all_greedy`, so once one sampled request had
+  joined a greedy decode batch the flag stayed false after it finished, and
+  DSpark verify kept taking the eager accept path instead of the folded one
+  (`fold_eligible` requires `sampling_info.is_all_greedy`) until the whole
+  batch drained. Merges build a new list, so `copy_for_forward()` copies are
+  never changed in place; an info built without per-row flags keeps the old
+  behaviour. The flags come from request parameters and the scheduler's keep
+  indices, so every TP rank makes the same decision. Upstream reports outputs
+  unaffected (the stale flag only costs step time); the remaining greedy rows
+  go back to the path an all-greedy batch takes anyway. Not yet measured on
+  GB10; the fleet check is that a greedy stream returns to the folded path
+  after a concurrent sampled request ends.
+- Not ported, reviewed against this pin (details in `docs/upstream-watch.md`):
+  ormandj's SGLang #42861 (exp2-free FP4 indexer key decode) changes only the
+  Hopper Triton scorer, which GB10 never runs here (SM12x decode uses
+  DeepGEMM `fp4_paged_mqa_logits`); ormandj's #42864 (vectorized mHC split-K
+  reduce, 160 decode slices) is gated to SM120 upstream, needs the newer
+  `HcState` model plumbing, and would break the exact-match self-check and
+  source pins of `adapter/hc_fused.py`; omkaark's #45086 (no row-count
+  specialization of the mHC kernels) edits two kernels whose source hashes
+  `adapter/hc_fused.py` pins.
+
 - Drop the SGLang #45251 grouped static-verify indexer backport: it hung every TP rank in decode
   on a greedy `/generate` with `return_logprob` (the 18,000-token code text of the long KL panel),
   every time, while chat traffic passed. Bisected on the fleet over the 26 backport steps with
