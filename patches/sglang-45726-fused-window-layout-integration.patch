@@ -1,7 +1,7 @@
 diff --git a/python/sglang/kernels/ops/kvcache/__init__.py b/python/sglang/kernels/ops/kvcache/__init__.py
 --- a/python/sglang/kernels/ops/kvcache/__init__.py
 +++ b/python/sglang/kernels/ops/kvcache/__init__.py
-@@ -75,6 +75,7 @@ __all__ = ["reshape_and_cache_flash"]
+@@ -59,6 +59,7 @@
  # Other Triton kernels migrated into this group (from attention/mem_cache
  # triton_ops); registered for inventory. Import them from their modules.
  _TRITON_KERNELS = [
@@ -12,23 +12,24 @@ diff --git a/python/sglang/kernels/ops/kvcache/__init__.py b/python/sglang/kerne
 diff --git a/python/sglang/srt/mem_cache/dsv41_request_window.py b/python/sglang/srt/mem_cache/dsv41_request_window.py
 --- a/python/sglang/srt/mem_cache/dsv41_request_window.py
 +++ b/python/sglang/srt/mem_cache/dsv41_request_window.py
-@@ -3,8 +3,15 @@ from typing import Optional
- import msgspec
+@@ -4,9 +4,16 @@
  import torch
  
  from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
 +from sglang.srt.environ import InvariantCheckLevel
  from sglang.srt.model_executor.runner_utils.capture_mode import get_is_capture_mode
 +from sglang.srt.utils.invariants import Bucket, Invariant, IsTrue, expect, resolve_level
-+
-+
+ 
+ 
 +_WINDOW_GROUPS_FIT = Invariant(
 +    "dsv41.window_groups_fit", Bucket.FATAL_CONTAINABLE, IsTrue()
 +)
- 
- 
++
++
  class WindowLayout(msgspec.Struct, frozen=True):
-@@ -73,6 +80,31 @@ def window_layout(
+     req: torch.Tensor
+     pos: torch.Tensor
+@@ -71,6 +78,31 @@
      n = pos.numel()
      if n == 0:
          raise ValueError("request-window layout needs at least one query")

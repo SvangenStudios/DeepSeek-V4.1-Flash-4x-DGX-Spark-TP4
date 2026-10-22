@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `scripts/fetch-sglang-canary.sh` failed on Linux: GNU patch rejects a hunk whose leading and
+  trailing context differ in length unless it sits at the file's start or end, and the #44751,
+  #45663 accept-output, #45518 and #45726 integration patches had such hunks, so staging stopped at
+  #44751 on a DGX Spark (BSD patch on macOS accepted them, which is where the images were staged).
+  The four patches are regenerated with symmetric context from the staged trees; both GNU and BSD
+  patch now produce byte-identical files, and the pins follow. CI stages the tree on Ubuntu and
+  macOS.
+
 - Backport Divy (divyvasal) and Claude Opus 5.5's open SGLang #44923 (head
   `6e0355d9`): the sampling info keeps a CPU greedy flag per row, and
   `filter_batch` recomputes `is_all_greedy` / `is_any_greedy` from the rows

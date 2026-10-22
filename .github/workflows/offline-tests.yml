@@ -120,3 +120,22 @@ jobs:
         run: |
           test "$(shasum -a 256 runtime/sglang/deepseekv41_detector.py | awk '{print $1}')" = \
             1db7eb88dfed0530a4c85231e525da83a5fd009e4feb85610bffd94d4c8c3672
+
+  stage-sglang:
+    # The image builds from the tree this script stages on the host. Run it with GNU patch
+    # (Linux, as on a DGX Spark) and BSD patch (macOS): a hunk that only one of them accepts
+    # broke Linux staging for four backports until 2026-10-22.
+    name: Stage SGLang canary (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch and patch the pinned SGLang tree
+        run: bash scripts/fetch-sglang-canary.sh
