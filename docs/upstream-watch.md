@@ -5,6 +5,13 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #40424](https://github.com/sgl-project/sglang/pull/40424) is carried
+  because both vulnerable sites exist unchanged in this pin. DP attention may
+  pad an eager extend beyond `extend_seq_lens`; low-ratio sources now slice to
+  the already-hoisted live rows before request-index construction. An idle
+  Engram batch returns discardable zero hashes before touching request tables.
+  Upstream reproduced the former as a CUDA device assert and the latter as a
+  scheduler crash; live-token math is unchanged.
 - [SGLang #45301](https://github.com/sgl-project/sglang/pull/45301) is carried as
   a bounded stability port because the pinned TP4 tree has the exact vulnerable
   pattern: replacing `q_pad_buffer` whenever a decoder-tail graph bucket changes

@@ -36,6 +36,7 @@ jobs:
             tests/test_sglang_dsv41_inline_system_patch.py \
             tests/test_sglang_dsv41_tool_images_thinking_patch.py \
             tests/test_sglang_dsv41_padded_query_buffer_patch.py \
+            tests/test_sglang_dsv41_dp_padding_patch.py \
             tests/test_sglang_dsv41_plain_text_patch.py \
             tests/test_sglang_dsv41_reasoning_end_patch.py \
             tests/test_sglang_dspark_draft_params_patch.py \
@@ -71,6 +72,8 @@ jobs:
             scripts/test_sglang_dsv41_tool_images_thinking.py \
             scripts/verify_sglang_dsv41_padded_query_buffer.py \
             scripts/test_sglang_dsv41_padded_query_buffer.py \
+            scripts/verify_sglang_dsv41_dp_padding.py \
+            scripts/test_sglang_dsv41_dp_padding.py \
             scripts/verify_sglang_dsv41_plain_text.py \
             runtime/patch_dsv41_plain_text_encode.py \
             scripts/verify_sglang_dsv41_reasoning_end.py \
