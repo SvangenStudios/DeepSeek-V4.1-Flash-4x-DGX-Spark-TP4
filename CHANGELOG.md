@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Backport Yangmin Li's merged SGLang #45630 commit (`741aea0a`): startup
+  autotuning may now select its measured FlashInfer CuTeDSL MXFP8 tactic for
+  block-FP8 linears at decode and verify row counts, instead of forcing the
+  backend heuristic below 4,096 rows. Deterministic inference still pins the
+  heuristic. Upstream measured about 2% shorter V4.1 decode steps at 16-64
+  requests per rank on GB300 and no change at smaller batches; no local GB10
+  or C1 claim is made before an A/B boot.
 - Backport liweizheng's SGLang #45518: clamp FlashInfer's fresh DSpark
   softmax output in place to the valid `1.0` probability ceiling. FlashInfer
   can overshoot by roughly 7e-6 on near-one-hot rows; the accept kernel treats

@@ -45,6 +45,7 @@ RUN python3 /opt/dsv41/scripts/verify_sglang_dspark_softmax_clamp.py /sgl-worksp
 RUN python3 /opt/dsv41/scripts/test_sglang_dspark_softmax_clamp.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dspark_param_restage.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dspark_param_restage.py /sgl-workspace/sglang/python
+RUN python3 /opt/dsv41/scripts/verify_sglang_mxfp8_decode_tactics.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_indexer_inplace.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_blocked_kv_dequant.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_blocked_kv_dequant.py
@@ -73,6 +74,7 @@ RUN PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_anthropic_thinki
  && python3 /opt/dsv41/tests/test_sglang_dspark_accept_outputs_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dspark_softmax_clamp_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dspark_param_restage_patch.py \
+ && python3 /opt/dsv41/tests/test_sglang_mxfp8_decode_tactics_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_indexer_inplace_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_blocked_kv_dequant_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_align_indexer_width_patch.py \
