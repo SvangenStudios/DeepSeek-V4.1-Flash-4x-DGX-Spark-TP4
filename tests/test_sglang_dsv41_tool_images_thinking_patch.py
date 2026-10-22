@@ -24,7 +24,7 @@ class ToolImagesThinkingPackagingTests(unittest.TestCase):
         digest = hashlib.sha256(patch_path.read_bytes()).hexdigest()
         fetch = (ROOT / "scripts/fetch-sglang-canary.sh").read_text()
         readme = (ROOT / "README.md").read_text()
-        self.assertEqual(digest, "0f5cd22a013fce4627e0d6743deb8c93f859a350570be613c2d9d3fd6d7d50bf")
+        self.assertEqual(digest, "0851a8f33fd00da18630a5fd4a275b8248e06ca57bb1dd205d7acc1179c36fa2")
         self.assertIn("TOOL_IMAGES_THINKING_PATCH_SHA256", fetch)
         self.assertIn("a038a0dca05cefca1e0edc4ac43e3bfbec2e064c", fetch)
         self.assertIn("SGLang #44751", readme)

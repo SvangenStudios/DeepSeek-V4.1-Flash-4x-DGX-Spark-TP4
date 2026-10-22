@@ -1,7 +1,8 @@
 diff --git a/python/sglang/srt/entrypoints/openai/encoding_dsv41.py b/python/sglang/srt/entrypoints/openai/encoding_dsv41.py
 --- a/python/sglang/srt/entrypoints/openai/encoding_dsv41.py
 +++ b/python/sglang/srt/entrypoints/openai/encoding_dsv41.py
-@@ -199,10 +199,17 @@ def find_last_user_index(messages: List[Dict[str, Any]]) -> int:
+@@ -203,11 +203,18 @@
+ def find_last_user_index(messages: List[Dict[str, Any]]) -> int:
      """Mid-conversation system messages also count as user messages here;
      they trigger the assistant generation header.
 +    User messages containing only tool results do not start a new turn.
@@ -19,7 +20,7 @@ diff --git a/python/sglang/srt/entrypoints/openai/encoding_dsv41.py b/python/sgl
              last_user_index = idx
              break
      return last_user_index
-@@ -437,10 +444,13 @@ def merge_tool_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+@@ -443,10 +450,13 @@
  
          if role == "tool":
              # Convert tool message to a user message with tool_result block
@@ -34,7 +35,7 @@ diff --git a/python/sglang/srt/entrypoints/openai/encoding_dsv41.py b/python/sgl
              }
              # Merge into previous message if it's already a user (merged tool)
              if (
-@@ -459,7 +469,12 @@ def merge_tool_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+@@ -465,7 +475,12 @@
          elif role == "user":
              content_blocks = msg.get("content_blocks")
              if content_blocks is None:
@@ -48,7 +49,7 @@ diff --git a/python/sglang/srt/entrypoints/openai/encoding_dsv41.py b/python/sgl
              if (
                  merged
                  and merged[-1].get("role") == "user"
-@@ -641,14 +656,6 @@ def _encode_messages_text(
+@@ -664,14 +679,6 @@
  ) -> str:
      """Encode preprocessed (text-only) messages into the V4.1 prompt format."""
      context = context if context else []
@@ -63,9 +64,7 @@ diff --git a/python/sglang/srt/entrypoints/openai/encoding_dsv41.py b/python/sgl
      full_messages = context + messages
  
      prompt = bos_token if add_default_bos_token and len(context) == 0 else ""
-@@ -716,9 +723,22 @@ def encode_messages(
-     Handles BOS insertion, thinking mode with optional reasoning dropping, tool
-     message merging, multi-turn context, and image content blocks. Returns the
+@@ -718,7 +725,20 @@
      prompt string, or ``(prompt, {"images": [...]})`` when
      ``return_multi_modal_data`` is set; the image records are in prompt order.
      """

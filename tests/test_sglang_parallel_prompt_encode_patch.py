@@ -57,12 +57,17 @@ class Envs:
     SGLANG_PARALLEL_PROMPT_ENCODE = EnvBool(True)
     SGLANG_PARALLEL_PROMPT_ENCODE_MIN_CHARS = EnvInt(32768)
 """
+    CHAT = """
+def encode_dsv41_prompt(tokenizer, prompt):
+    return parallel_prompt_encode(tokenizer, prompt)
+"""
 
     def make_tree(self, root: Path, *, stale=False) -> tuple[Path, str]:
         paths = {
             "sglang/srt/entrypoints/openai/parallel_prompt_encode.py": self.HELPER,
             "sglang/srt/entrypoints/openai/serving_chat.py": self.SERVING
             + ("\ntokenizer.encode(real_input)\n" if stale else ""),
+            "sglang/srt/entrypoints/openai/chat_encoding.py": self.CHAT,
             "sglang/srt/environ.py": self.ENVIRON,
         }
         for relative, source in paths.items():
@@ -86,6 +91,30 @@ class Envs:
     def test_serial_native_call_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             root, digest = self.make_tree(Path(tmp), stale=True)
+            with self.assertRaises(SystemExit):
+                VERIFY.verify(root, helper_sha256=digest)
+
+    def test_plain_text_wrapped_dsv41_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, digest = self.make_tree(Path(tmp))
+            serving = root / "sglang/srt/entrypoints/openai/serving_chat.py"
+            serving.write_text(
+                self.SERVING.replace(
+                    "    y = parallel_prompt_encode(tokenizer, b)",
+                    "    prompt_ids = chat_encoding.encode_dsv41_prompt(tokenizer, b)",
+                )
+            )
+            VERIFY.verify(root, helper_sha256=digest)
+
+    def test_missing_dsv41_wrapper_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, digest = self.make_tree(Path(tmp))
+            serving = root / "sglang/srt/entrypoints/openai/serving_chat.py"
+            serving.write_text(
+                self.SERVING.replace(
+                    "    y = parallel_prompt_encode(tokenizer, b)", "    y = []"
+                )
+            )
             with self.assertRaises(SystemExit):
                 VERIFY.verify(root, helper_sha256=digest)
 

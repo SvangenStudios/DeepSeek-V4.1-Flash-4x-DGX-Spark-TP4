@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PATCH_SHA256 = "b44e8522f386acf02050254307ad71a8f1584af3b5943207faa7c0f0c6ee5fe9"
+PATCH_SHA256 = "8068b7ec44914c5e79627c88ebd5367b6dfc58cc130da9307ab694ce93404e22"
 
 
 class DsparkAcceptOutputsPackagingTests(unittest.TestCase):

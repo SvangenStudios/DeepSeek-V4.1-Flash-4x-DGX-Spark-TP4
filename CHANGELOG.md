@@ -1,6 +1,97 @@
 # Changelog
 
-## Unreleased
+## 2026-10-22 v2.5
+
+Production profile = the v2.4 lever set again, now on an image with the issue #16 backport, the
+logprob decode hang fixed and the Linux staging repaired. Image `Dockerfile.canary-roce` at
+`f9a1de4`, checkpoint DeepSeek-V4.1-Flash-1017 (abliterated `517efab`), one fresh boot:
+sparkDash prose / code / structured / json c1 88.6 / 144.9 / 158.4 / 128.1 (conservative fallback
+profile on the same checkpoint: 84.8 / 138.8 / 153.8 / 126.0), speedbench all 85.9 (83.1), cold
+387K prefill 68.2 s (77.0 s); KL panels against the stable 1017 image PASS (0.0062 / 0.0061),
+qeval 71/75, T>0 scan 0/35. The accelerated issue #16 reproducer passed on two cold boots
+(1,445 and 813 requests on 190K-900K cached prefixes, 0 failures, no CUDA error or Xid; see
+`docs/issue-16-swa-crash.md`).
+
+
+- `scripts/fetch-sglang-canary.sh` failed on Linux: GNU patch rejects a hunk whose leading and
+  trailing context differ in length unless it sits at the file's start or end, and the #44751,
+  #45663 accept-output, #45518 and #45726 integration patches had such hunks, so staging stopped at
+  #44751 on a DGX Spark (BSD patch on macOS accepted them, which is where the images were staged).
+  The four patches are regenerated with symmetric context from the staged trees; both GNU and BSD
+  patch now produce byte-identical files, and the pins follow. CI stages the tree on Ubuntu and
+  macOS.
+
+- Backport Divy (divyvasal) and Claude Opus 5.5's open SGLang #44923 (head
+  `6e0355d9`): the sampling info keeps a CPU greedy flag per row, and
+  `filter_batch` recomputes `is_all_greedy` / `is_any_greedy` from the rows
+  that remain. Before, a
+  merge could only clear `is_all_greedy`, so once one sampled request had
+  joined a greedy decode batch the flag stayed false after it finished, and
+  DSpark verify kept taking the eager accept path instead of the folded one
+  (`fold_eligible` requires `sampling_info.is_all_greedy`) until the whole
+  batch drained. Merges build a new list, so `copy_for_forward()` copies are
+  never changed in place; an info built without per-row flags keeps the old
+  behaviour. The flags come from request parameters and the scheduler's keep
+  indices, so every TP rank makes the same decision. Upstream reports outputs
+  unaffected (the stale flag only costs step time); the remaining greedy rows
+  go back to the path an all-greedy batch takes anyway. Not yet measured on
+  GB10; the fleet check is that a greedy stream returns to the folded path
+  after a concurrent sampled request ends.
+- Not ported, reviewed against this pin (details in `docs/upstream-watch.md`):
+  ormandj's SGLang #42861 (exp2-free FP4 indexer key decode) changes only the
+  Hopper Triton scorer, which GB10 never runs here (SM12x decode uses
+  DeepGEMM `fp4_paged_mqa_logits`); ormandj's #42864 (vectorized mHC split-K
+  reduce, 160 decode slices) is gated to SM120 upstream, needs the newer
+  `HcState` model plumbing, and would break the exact-match self-check and
+  source pins of `adapter/hc_fused.py`; omkaark's #45086 (no row-count
+  specialization of the mHC kernels) edits two kernels whose source hashes
+  `adapter/hc_fused.py` pins.
+- **`adapter/wo_a_input_fp8.py`, `DSV41_WO_A_INPUT_FP8=1`, off by default (to be A/B-tested on the
+  fleet).** Numerics parity with DeepSeek's reference: since revision
+  [`4dd75a8b`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/commit/4dd75a8b448d95ae8e284d5c5a1e4b8808bd583b) of
+  `inference/model.py` (2026-10-12, also shipped with DeepSeek-V4.1-Flash-1017) the reference rounds the
+  attention output `o` to FP8 and back before the bf16 `wo_a` einsum, in the target attention and the
+  DSpark draft attention: blocks of 32 values along each group's 4096 features, power-of-two (ue8m0)
+  scales, e4m3 round-to-nearest-even. Both checkpoints use 32x32 weight blocks, so the engine
+  dequantizes `wo_a` to bf16 and every serving path (stock GEMV / small-batch / MXFP8-epilogue / bmm /
+  einsum, `wo_a_w8`'s twin kernels, the draft's fast kernel) fed `o` unrounded; the stock
+  `wo_a_bf16_small_batch_mxfp8` quantizes `wo_a`'s output for `wo_b`, not its input. With the flag the
+  bf16 dispatch rounds `o` in place first (one Triton kernel), and `wo_a_w8`'s DROP/MID routes round
+  the loaded tile in registers (their PTX is unchanged with the flag off). Rank-local rounding is the
+  reference's: no block straddles a head, group or TP rank. `tests/test_wo_a_input_fp8.py` checks it
+  bit for bit against a transcription of the reference kernel and an independent e4m3 grid rounding.
+  No speed or quality effect is claimed; nothing is measured on GB10 yet. Credits: DeepSeek (the
+  reference change), 05yuki ([SGLang #45185](https://github.com/sgl-project/sglang/pull/45185), the
+  same step in SGLang, open) and christopherowen
+  ([spark-ds41f](https://github.com/christopherowen/spark-ds41f), which adopted it in its vLLM recipe).
+
+- Drop the SGLang #45251 grouped static-verify indexer backport: it hung every TP rank in decode
+  on a greedy `/generate` with `return_logprob` (the 18,000-token code text of the long KL panel),
+  every time, while chat traffic passed. Bisected on the fleet over the 26 backport steps with
+  thin overlays of the fix image: 24 steps answer in 7 s, adding #45251 hangs, all steps without
+  it answer (prefill SP on, long and short KL panels against stable-1017: continuation KL 0.0067
+  and 0.0073, PASS). It had never been measured on GB10.
+
+- Fix `DSV41_PREFILL_SP=1` on the current canary images. The adapter hash-pins
+  the engine functions it copies or wraps; the #42901 layer-20 tail (PR #24)
+  and #45301 (PR #48) changed two of them, so the adapter refused at import and
+  the head died about 20 s into boot. The prefill-SP layer loop now follows
+  #42901: the last KV-source layer gathers every row and writes full-prompt
+  compressed KV before the tail, as the stock loop does (checked against the
+  stock loop: exact mode identical, fast mode identical to P0). The SP region
+  is now layers 0-19. A new image-build test imports the model with every
+  adapter flag of `.env.tp4.example` on, so a pinned function that drifts fails
+  the build instead of the boot.
+- The canary images point rustup at an unreachable dist server, so the
+  `cargo --version` probe of the image preprocessor fails at once instead of
+  holding a rank before torch distributed init (one rank waited 7 minutes).
+- `stop.sh` keeps the shared `dsv41-nfs` exporter. Removing it left the worker
+  NFS volumes without a server, and the next stop hung on them.
+- The image builds again: two source verifiers followed the #45457 DSV4.1
+  encode wrapper and the #45726 layout order, and the packaging tests' inputs
+  are copied into the image.
+- README: current results (sparkDash and speedbench) of this image on the
+  conservative profile; the v2.4 table moved to `docs/history.md`.
 
 - Backport maocheng23 and Claude Opus 5.5's merged SGLang #43448
   (`42228038`). When chunked prefill is disabled or unset, V4.1 MHC kernel
@@ -47,14 +138,6 @@
   request windows, context parallelism, online C128 MTP, TRT-LLM and every
   backend that does not explicitly opt in. Upstream reports this as a small
   default-on seam optimization; no local GB10 TPS claim is made before A/B.
-- Adapt kpham-sgl's merged SGLang #45251 for the pinned V4.1 indexer: static
-  DSpark verification groups the six query rows belonging to one request before
-  each full cache scan, so the paged index-K cache is traversed per request
-  instead of once per draft row. Ragged verification and ordinary
-  decode/prefill keep the original one-row layout. Upstream measured four
-  128K-context scans at 1.27 to 0.47 ms and a DSpark cycle at 22.57 to 21.57 ms
-  at concurrency 64; this is a long-context/concurrency canary, not a local
-  GB10 or C1 performance claim.
 - Adapt hnyls2002's merged SGLang #45586 and #45699 idle-store fixes. An idle
   forward now returns before reading stale or unset attention metadata: with an
   encoder-replay request window it activates a cached idle layout of the right

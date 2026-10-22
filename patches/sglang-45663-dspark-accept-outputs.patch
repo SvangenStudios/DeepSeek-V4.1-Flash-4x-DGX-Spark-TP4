@@ -1,8 +1,7 @@
 diff --git a/python/sglang/kernels/ops/speculative/dspark/dspark_accept.py b/python/sglang/kernels/ops/speculative/dspark/dspark_accept.py
-index 75c0704c9cf4..207f4dcad6c6 100644
 --- a/python/sglang/kernels/ops/speculative/dspark/dspark_accept.py
 +++ b/python/sglang/kernels/ops/speculative/dspark/dspark_accept.py
-@@ -704,11 +704,15 @@ class FinalizeAcceptLens:
+@@ -707,11 +707,15 @@
          correct_len: torch.Tensor,
          cap_trim_lens: torch.Tensor,
          prefix_lens: torch.Tensor,
@@ -18,7 +17,7 @@ index 75c0704c9cf4..207f4dcad6c6 100644
          )
  
      @classmethod
-@@ -718,11 +722,15 @@ class FinalizeAcceptLens:
+@@ -721,11 +725,15 @@
          correct_len: torch.Tensor,
          cap_trim_lens: torch.Tensor,
          prefix_lens: torch.Tensor,
@@ -34,7 +33,7 @@ index 75c0704c9cf4..207f4dcad6c6 100644
          )
  
  
-@@ -732,14 +740,28 @@ def finalize_accept_lens(
+@@ -734,13 +742,27 @@
      correct_len: torch.Tensor,
      cap_trim_lens: torch.Tensor,
      prefix_lens: torch.Tensor,
@@ -48,7 +47,7 @@ index 75c0704c9cf4..207f4dcad6c6 100644
          commit_lens=commit_lens,
          new_seq_lens=new_seq_lens,
          cap_trim_lens=cap_trim_lens.to(torch.int32),
-     )
++    )
 +    if out is None:
 +        return result
 +    out.correct_len.copy_(correct_len)
@@ -60,11 +59,10 @@ index 75c0704c9cf4..207f4dcad6c6 100644
 +        commit_lens=out.commit_lens,
 +        new_seq_lens=out.new_seq_lens,
 +        cap_trim_lens=out.cap_trim_lens,
-+    )
+     )
  
  
- @triton.jit
-@@ -751,17 +773,30 @@ def _finalize_accept_lens_kernel(
+@@ -752,17 +774,30 @@
      commit_lens_ptr,
      new_seq_lens_ptr,
      cap_trim_out_ptr,
@@ -97,7 +95,7 @@ index 75c0704c9cf4..207f4dcad6c6 100644
  
  
  def finalize_accept_lens_triton(
-@@ -770,13 +805,27 @@ def finalize_accept_lens_triton(
+@@ -770,13 +805,27 @@
      correct_len: torch.Tensor,
      cap_trim_lens: torch.Tensor,
      prefix_lens: torch.Tensor,
@@ -128,7 +126,7 @@ index 75c0704c9cf4..207f4dcad6c6 100644
      BLOCK = 256
      _finalize_accept_lens_kernel[(triton.cdiv(bs, BLOCK),)](
          correct_len,
-@@ -785,8 +834,12 @@ def finalize_accept_lens_triton(
+@@ -785,8 +834,12 @@
          commit_lens,
          new_seq_lens,
          cap_trim_out,
@@ -142,7 +140,6 @@ index 75c0704c9cf4..207f4dcad6c6 100644
      return FinalizeAcceptLensResult(
          commit_lens=commit_lens,
 diff --git a/python/sglang/kernels/ops/speculative/dspark/dspark_verify_window.py b/python/sglang/kernels/ops/speculative/dspark/dspark_verify_window.py
-index 93cbc131f0c9..13009f516025 100644
 --- a/python/sglang/kernels/ops/speculative/dspark/dspark_verify_window.py
 +++ b/python/sglang/kernels/ops/speculative/dspark/dspark_verify_window.py
 @@ -1,5 +1,7 @@
@@ -153,7 +150,7 @@ index 93cbc131f0c9..13009f516025 100644
  import msgspec
  import torch
  import triton
-@@ -810,6 +812,7 @@ class BuildOutTokens:
+@@ -815,6 +817,7 @@
          bonus: torch.Tensor,
          verify_num_draft_tokens: int,
          gamma: int,
@@ -161,7 +158,7 @@ index 93cbc131f0c9..13009f516025 100644
      ) -> torch.Tensor:
          return build_out_tokens(
              draft_tokens=draft_tokens,
-@@ -818,6 +821,7 @@ class BuildOutTokens:
+@@ -822,6 +825,7 @@
              bonus=bonus,
              verify_num_draft_tokens=verify_num_draft_tokens,
              gamma=gamma,
@@ -169,7 +166,7 @@ index 93cbc131f0c9..13009f516025 100644
          )
  
      @classmethod
-@@ -829,6 +833,7 @@ class BuildOutTokens:
+@@ -833,6 +837,7 @@
          bonus: torch.Tensor,
          verify_num_draft_tokens: int,
          gamma: int,
@@ -177,7 +174,7 @@ index 93cbc131f0c9..13009f516025 100644
      ) -> torch.Tensor:
          return build_out_tokens_triton(
              draft_tokens=draft_tokens,
-@@ -837,6 +842,7 @@ class BuildOutTokens:
+@@ -840,6 +845,7 @@
              bonus=bonus,
              verify_num_draft_tokens=verify_num_draft_tokens,
              gamma=gamma,
@@ -185,7 +182,7 @@ index 93cbc131f0c9..13009f516025 100644
          )
  
  
-@@ -849,6 +855,7 @@ def build_out_tokens(
+@@ -850,6 +856,7 @@
      bonus: torch.Tensor,
      verify_num_draft_tokens: int,
      gamma: int,
@@ -193,7 +190,7 @@ index 93cbc131f0c9..13009f516025 100644
  ) -> torch.Tensor:
      bs = draft_tokens.shape[0]
      out_tokens = torch.empty(
-@@ -859,7 +866,9 @@ def build_out_tokens(
+@@ -860,7 +867,9 @@
      out_tokens[:, :gamma].copy_(draft_tokens)
      out_tokens[:, gamma].fill_(0)
      out_tokens.scatter_(1, correct_len.to(torch.int64)[:, None], bonus[:, None])
@@ -204,7 +201,7 @@ index 93cbc131f0c9..13009f516025 100644
  
  
  @triton.jit
-@@ -893,14 +902,19 @@ def build_out_tokens_triton(
+@@ -894,14 +903,19 @@
      bonus: torch.Tensor,
      verify_num_draft_tokens: int,
      gamma: int,
@@ -229,7 +226,8 @@ index 93cbc131f0c9..13009f516025 100644
 diff --git a/python/sglang/srt/speculative/dspark_components/dspark_verify.py b/python/sglang/srt/speculative/dspark_components/dspark_verify.py
 --- a/python/sglang/srt/speculative/dspark_components/dspark_verify.py
 +++ b/python/sglang/srt/speculative/dspark_components/dspark_verify.py
-@@ -178,21 +178,26 @@ class DsparkVerifyEpilogue:
+@@ -746,24 +746,29 @@
+         self._tp_sync.sync(SpecTpSyncSite.DSPARK_ACCEPT_GRAPH, correct_len)
          self._tp_sync.sync(SpecTpSyncSite.DSPARK_ACCEPT_GRAPH, bonus)
          self._tp_sync.sync(SpecTpSyncSite.DSPARK_ACCEPT_GRAPH, cap_trim_lens)
 +        static_out = AcceptOuts(
@@ -263,3 +261,5 @@ diff --git a/python/sglang/srt/speculative/dspark_components/dspark_verify.py b/
 -        self.new_seq_lens_buf[:bs].copy_(finalized.new_seq_lens)
 -        self.out_tokens_buf[:bs].copy_(out_tokens.view(bs, self.stride))
          return finalized.commit_lens
+ 
+     def _commit_inject(

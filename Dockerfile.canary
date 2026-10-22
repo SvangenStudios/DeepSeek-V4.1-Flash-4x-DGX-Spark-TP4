@@ -70,10 +70,10 @@ RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_fused_window_layout.py /sgl-w
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_fused_window_layout.py
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_idle_swa_store.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_idle_swa_store.py /sgl-workspace/sglang/python
-RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_grouped_verify_indexer.py /sgl-workspace/sglang/python
-RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_grouped_verify_indexer.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_draft_metadata_glue.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_draft_metadata_glue.py /sgl-workspace/sglang/python
+RUN python3 /opt/dsv41/scripts/verify_sglang_greedy_flags_refresh.py /sgl-workspace/sglang/python
+RUN python3 /opt/dsv41/scripts/test_sglang_greedy_flags_refresh.py /sgl-workspace/sglang/python
 COPY runtime/sglang-canary/upstream-tests/test_parallel_prompt_encode.py /opt/dsv41/upstream-tests/test_parallel_prompt_encode.py
 COPY runtime/sglang-canary/upstream-tests/test_plain_text_encode.py /opt/dsv41/upstream-tests/test_plain_text_encode.py
 COPY runtime/sglang-canary/upstream-tests/test_reasoning_parser.py /opt/dsv41/upstream-tests/test_reasoning_parser.py
@@ -82,6 +82,12 @@ RUN PYTHONPATH=/sgl-workspace/sglang/python python3 -m pytest -q /opt/dsv41/upst
 RUN PYTHONPATH=/sgl-workspace/sglang/python python3 /opt/dsv41/scripts/run_sglang_45458_upstream_test.py /opt/dsv41/upstream-tests/test_reasoning_parser.py
 COPY tests /opt/dsv41/tests
 COPY benchmarks /opt/dsv41/benchmarks
+# Packaging tests below also verify patch provenance and both canary build
+# recipes. Keep those small source artifacts in the image test context.
+COPY README.md Dockerfile Dockerfile.canary Dockerfile.canary-roce .env.tp4.example /opt/dsv41/
+COPY patches /opt/dsv41/patches
+COPY runtime/*.py /opt/dsv41/runtime/
+COPY runtime/b12x /opt/dsv41/runtime/b12x
 RUN PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_anthropic_thinking.py \
  && CUDA_VISIBLE_DEVICES= PYTHONDONTWRITEBYTECODE=1 python3 -B /opt/dsv41/tests/test_v41_tool_constraint.py \
  && CUDA_VISIBLE_DEVICES= python3 /opt/dsv41/tests/test_swa_bounded_replay_backport.py \
@@ -104,14 +110,15 @@ RUN PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_anthropic_thinki
  && python3 /opt/dsv41/tests/test_sglang_dsv41_window_history_src_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_fused_window_layout_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_idle_swa_store_patch.py \
- && python3 /opt/dsv41/tests/test_sglang_dsv41_grouped_verify_indexer_patch.py \
  && python3 /opt/dsv41/tests/test_sglang_dsv41_draft_metadata_glue_patch.py \
+ && python3 /opt/dsv41/tests/test_sglang_greedy_flags_refresh_patch.py \
  && DSV41_PREFILL_BYPASS_SOURCE_ROOT=/sgl-workspace/sglang/python/sglang/srt/managers DSV41_PREFILL_BYPASS_EXPECT=supported PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_prefill_bypass.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_thinking_alias.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_max_new_tokens.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_loop_abort.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_fast_load_pacing.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_wo_a_w8.py \
+ && CUDA_VISIBLE_DEVICES= PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_wo_a_input_fp8.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_draft_tau.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_folded_fence.py \
  && PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_draft_head_fp8.py \
@@ -120,9 +127,17 @@ RUN PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_anthropic_thinki
  && CUDA_VISIBLE_DEVICES= PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_replicated_split.py \
  && CUDA_VISIBLE_DEVICES= VC_TEST_N=60000 PYTHONPATH=/opt/dsv41/adapter python3 /opt/dsv41/tests/test_verify_cap.py \
  && cd /opt/dsv41/tests && CUDA_VISIBLE_DEVICES= PYTHONPATH=/opt/dsv41/adapter python3 test_indexer_chunked_v3.py /sgl-workspace/sglang/python/sglang/srt/layers/attention/deepseek_v4_backend.py
+# SGLANG_RUST_BUILD_MODE=never still probes `cargo --version --verbose`, and rustup can
+# hang there for minutes trying to fetch a toolchain (a TP rank stuck before torch
+# distributed init). With no reachable dist server the probe fails at once and the
+# image processor falls back to PIL.
 ENV PYTHONPATH=/opt/dsv41/adapter \
     MODEL_PATH=/models/DeepSeek-V4.1-Flash \
-    STATE_PATH=/state OFFLOAD_MODE=nvme DSV41_CACHE_GIB=16
+    STATE_PATH=/state OFFLOAD_MODE=nvme DSV41_CACHE_GIB=16 \
+    RUSTUP_DIST_SERVER=http://127.0.0.1:1 RUSTUP_UPDATE_ROOT=http://127.0.0.1:1 \
+    CARGO_NET_OFFLINE=true
+# Every hash-pinned adapter must install on this engine tree (a drift kills the head at boot).
+RUN CUDA_VISIBLE_DEVICES= python3 /opt/dsv41/tests/test_adapter_engine_pins.py
 EXPOSE 8888
 HEALTHCHECK --interval=30s --timeout=30s --start-period=30m --retries=3 \
     CMD ["python3", "-S", "/opt/dsv41/boot.py", "health"]

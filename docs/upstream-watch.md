@@ -5,6 +5,43 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #44923](https://github.com/sgl-project/sglang/pull/44923) (open, head
+  `6e0355d9`) is carried. `SamplingBatchInfo.merge_batch` could only clear
+  `is_all_greedy`, and `filter_batch` never set it again, so a greedy decode
+  batch that had once held a sampled request stayed on DSpark's eager accept
+  path after that request finished. Per-row CPU flags now refresh both batch
+  flags on filter with no device sync. Token selection does not change; the
+  effect is that the folded verify is eligible again. Not yet measured on GB10.
+- [SGLang #42861](https://github.com/sgl-project/sglang/pull/42861) (open) decodes FP4
+  indexer keys with selects and an exponent-field bitcast instead of `exp2`, with
+  the same output. In this pin the changed helper lives in
+  `sm90_fp4_indexer.py`, and its only caller is the Hopper decode branch of
+  `_low_ratio_index_topk` (`_is_sm100_or_newer()` is false). GB10 is
+  capability 12.1 and takes DeepGEMM `fp4_paged_mqa_logits`, so the port would
+  be dead code here. Upstream measured it through `fp4_index_logits_paged` (from
+  #41251, not in this pin) on SM120. HOLD until a rebase moves SM12x decode onto
+  the Triton paged scorer.
+- [SGLang #42864](https://github.com/sgl-project/sglang/pull/42864) (open) replaces the
+  serial mHC split-K reduce with a vectorized `tl.sum` reduce and uses 160 K slices
+  at decode. Both are gated to `device_sm == 120`, so a faithful port does
+  nothing on GB10 (SM121). The decode flag is passed through the `HcState`
+  model code, which this pin does not have. Enabling it on SM121 would change
+  the summation order, and greedy output with it. It would also change
+  `hc_mix_stats_sinkhorn` and `_num_slices_for`, which `adapter/hc_fused.py`
+  hash-pins. That adapter's exactness argument and first-call self-check assume
+  the serial slice-order reduce, so with the new reduce `DSV41_HC_FUSED` would
+  fall back to stock for the whole process. HOLD: it needs a GB10 timing, a KL
+  gate, and a matching change to `hc_fused`.
+- [SGLang #45086](https://github.com/sgl-project/sglang/pull/45086) (open) adds the row
+  count to `do_not_specialize` on the mHC split-K kernels, which avoids Triton
+  recompiles in the middle of serving (bit-identical output). Here
+  `_hc_mix_stats_partial_kernel` and `_hc_mix_reduce_sinkhorn_kernel` are
+  source-pinned by `adapter/hc_fused.py`, and the decorator is part of the hashed
+  source, so the image build's adapter-pin test would fail. The bf16x3 kernel
+  sits in a separate file in this pin. Integer specialization creates at most
+  three variants per kernel (`== 1`, `% 16 == 0`, other), and CUDA-graph capture
+  and warmup usually compile all three. HOLD for an owner-approved re-pin of
+  `hc_fused._EXPECTED`.
 - [SGLang #43448](https://github.com/sgl-project/sglang/pull/43448) is carried
   as a small startup robustness fix. The pinned MHC prewarm passed
   `chunked_prefill_size` directly into its bucket builder; `-1`, `0` or unset
@@ -48,13 +85,17 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
   outside static DSpark/FlashMLA without request windows, CP or online C128.
   Upstream makes this small seam optimization default-on, but reports it only
   as part of a broader GB300 stack; it awaits a same-boot GB10 A/B here.
-- [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251) is carried as a bounded
-  pinned-tree adaptation. Static DSpark verification reshapes six query rows into one request
-  before the ratio-1/ratio-2 candidate-source and direct-fallback full scans; the C4 indexer,
-  ragged verify and normal decode/prefill stay one-row-per-request. The SM120 schedule chunks are
-  aligned to the group so no request straddles plans. Upstream measured the four 128K scans at 1.27 to 0.47 ms and the whole
-  DSpark cycle at 22.57 to 21.57 ms at c64. Treat it as a long-context/concurrency canary until a
-  GB10 A/B; it is not expected to move the short C1 column materially.
+- [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251) was carried for a day and is
+  **dropped**. Its pinned-tree adaptation (static DSpark verify grouped six query rows per request
+  before the ratio-1/ratio-2 full indexer scans) hung every TP rank on GB10: a greedy native
+  `/generate` with `return_logprob` on the 18,000-token code text of `scripts/kld_long_texts.json`
+  never finished its first decode steps (GPUs at 96 %, all schedulers waiting on the step's copy
+  event, NCCL watchdog after 10 minutes), every time. Found by bisecting the 26 backport steps of
+  `scripts/fetch-sglang-canary.sh` with thin image overlays on 2026-10-22: the tree with the first
+  24 steps answers the request in 7 s, adding #45251 hangs it, and the full tree without #45251
+  answers it. It was never measured on GB10 and upstream sized it for c64 128K contexts, so nothing
+  is lost at the context and concurrency this recipe serves. Root cause in the grouped DeepGEMM
+  `next_n` path not established.
 - [SGLang #45807](https://github.com/sgl-project/sglang/pull/45807) fuses the BF16 Torch
   prefill-indexer score epilogue and reports a 21% input-throughput gain on H200, but this recipe's
   active prefill path is the FP4 DeepGEMM scorer. It remains HOLD/watch rather than being copied

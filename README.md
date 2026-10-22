@@ -2,58 +2,48 @@
 
 <p align="center">A measured TP4 serving profile for <a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash">deepseek-ai/DeepSeek-V4.1-Flash</a> (native weights, SGLang, DSpark) on four NVIDIA DGX Spark (GB10) nodes, built on top of the MiaAI-Lab recipe.</p>
 
-## Historical pre-fix v2.4 results
+## Current results
 
-These measurements remain useful as historical performance data, but their image predates the issue #16 fix. Stack v2.4 (the historical `EXTRA_CONTAINER_ENV` line of [`.env.tp4.example`](.env.tp4.example) with its settings block, `EP_SIZE=1`, `Dockerfile.canary-roce` image), built from a clean tree on all four nodes, sparkDash 1.8.8: 256 new tokens, temperature 0, thinking off, idle fleet, 2026-10-12. KV pool 3.67M tokens, 1M context. Raw output: [`docs/results/validation-20261012-v24.txt`](docs/results/validation-20261012-v24.txt). Measurements from other fleets are linked, with their dates, in [`docs/community-results.md`](docs/community-results.md).
+Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251), the "Production profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) at `517efab`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. Speculative decoding makes tok/s depend on the generated text, so the official checkpoint and other DeepSeek releases give somewhat different numbers on the same prompts.
 
-### sparkDash, GPU clock capped at 2200 MHz
+### sparkDash 1.8.8
 
-All results here are at the 2200 MHz SM clock cap this fleet runs with (`nvidia-smi -lgc 0,2200`, re-applied by a timer), which keeps the nodes cooler.
+256 new tokens, temperature 0, thinking off.
 
 **Decode, aggregate tok/s (per stream in brackets)**
 
 | prompt type | c1 | c2 | c4 | c8 | c16 |
 |---|---:|---:|---:|---:|---:|
-| prose | **89.9** | 123.3 (63.3) | 164.9 (41.7) | 237.2 (30.8) | 341.3 (22.2) |
-| code | 131.0 | 175.8 (88.8) | 246.8 (63.2) | 306.8 (41.0) | 440.3 (29.4) |
-| structured | 158.7 | 178.9 (103.7) | 240.4 (70.2) | 292.2 (43.5) | 575.6 (44.7) |
-| json | 128.4 | 175.1 (90.3) | 314.0 (79.4) | 465.0 (59.4) | 632.8 (41.7) |
+| prose | **88.6** | 124.7 (63.1) | 170.1 (44.0) | 235.0 (31.1) | 337.6 (21.9) |
+| code | 144.9 | 181.2 (91.6) | 242.8 (64.9) | 313.1 (41.4) | 456.9 (30.4) |
+| structured | 158.4 | 216.3 (112.1) | 221.0 (73.2) | 272.8 (41.5) | 377.5 (32.1) |
+| json | 128.1 | 181.7 (91.7) | 304.2 (77.6) | 471.0 (61.0) | 690.1 (45.1) |
 
 **Prefill, cold, tok/s**
 
 | 4k | 16k | 32k | 64k | 128k |
 |---:|---:|---:|---:|---:|
-| 4756 | 5790 | 5941 | 5969 | 5896 |
+| 4855 | 5957 | 6043 | 6164 | 6214 |
 
-**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each. Each cell is the better of two full sweeps on two boots of the same final image (c1 runs: prose 89.9 / 89.0 / 90.0; code 131.0 / 129.3 / 131.4; structured 152.8 / 159.3 / 158.7; json 123.4 / 129.5 / 128.5). This fleet ran without the optional `DSV41_ENGRAM_DRM_NODE` (its display reservation is used by another tenant), which costs a few percent at c8-c16. Prefill: sparkDash prefill bench, cold, one run per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
+**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 88.1 / 89.1 / 88.6; code 134.8 / 144.9 / 144.9; structured 155.2 / 159.7 / 158.4; json 125.8 / 131.1 / 128.1). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
 
-### Long context and multi-user behaviour
+### speedbench
 
-Varied-text prompts, cold (unique salt per prompt), [`scripts/v24_probe.py`](scripts/v24_probe.py):
+[speedbench](https://github.com/knapcio/speedbench) 0.3 (`6733653`), full mode: 73 frozen prompts in six categories (prompt set speedbench-v1), c1, temperature 0, 256 output tokens, thinking off, run on the head against `127.0.0.1:8888`. Decode tok/s, geometric mean over the prompts of each category:
 
-| | v2.4 |
-|---|---:|
-| cold prefill, 388K-token prompt | 77.8 s (4,976 tok/s) |
-| 969K-token needle (passphrase found) | 235 s |
-| short chat sent 8 s into a cold 400K prefill, time to answer | 4.6 s |
-| return to a 388K session after a second 388K session ran | 1.5 s (100 % cached) |
-| lowest MemAvailable during the 1M prefill, head / workers | 5.7 / 7.1-7.7 GiB |
+| Category | prose | code | structured | agentic | multilingual | long context | all 73 prompts |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| tok/s | 63.3 | 108.7 | 103.2 | 97.3 | 67.7 | 89.9 | 85.9 |
 
-What v2.4 changed against v2.3 is in [CHANGELOG.md](CHANGELOG.md).
+Median time to first token 219 ms; 73 of 73 prompts valid, none failed.
 
-**Quality and correctness gates** (final image, against the v2.3 settings booted the same morning as the reference):
+**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 388k tokens (passphrase at 50 % depth; 22 s and 71 s); cold prefill of a 387K-token varied-text prompt 68.2 s (5,677 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; `ds_gate.py kld` long and short panels (native `/generate` with top-10 logprobs, 16.5k-40k-token prompts) against the stable 1017 image: continuation KL 0.0062 and 0.0061, PASS. Issue #16 accelerated reproducer (`scripts/issue16_repro.py`: 190K-900K cached prefixes with 512-4096 fresh tokens, alternating c1/c4): 813 requests in 30 minutes on this boot, 1,445 in 40 minutes on an earlier boot of the same tree, 0 failures, no CUDA error or Xid on any rank ([docs/issue-16-swa-crash.md](docs/issue-16-swa-crash.md)).
 
-- `scripts/qeval.py` (75 auto-scored tasks, c1, temperature 0): 72 / 72 / 72 on v2.4, the reference 72 / 72 / 72; both miss the same three tasks.
-- Greedy-continuation KL against the reference (`scripts/ds_gate.py kld`): mean 0.0045 over 239 positions (long prompts, 16.5k-40k) and 0.0061 over 559 positions (short, 1-3k), PASS against the 0.035 limit.
-- T > 0 scan (`ds_gate.py tscan`, 35 outputs): 0 garbled, 0 errors (reference 0 of 35).
-- Prefix cache (`scripts/prefix_scan.py`): PASS, cold-vs-warm logprob drift 0.0 on all eight hits (reference identical, including its one false anomaly).
-- 60-minute soak at 16 concurrent clients (mixed prompts, T 0 / 0.6 / 1.0, 30 % thinking, ~5 % cold 22K-45K-token prompts): 2,285 completions, 0 errors, 0 empty, 0 container restarts or OOM, 0 kernel Xid / `NV_ERR`, MemAvailable never below 12.9 GiB.
-- `/v1/messages` with the image placeholder token in message text and with `thinking: {"type": "enabled"}` without a budget: both answered.
-- Required and named `tool_choice` now use SGLang's V4.1 structural tag. The stock default image admitted a bare DSML invoke that the parser returned as `message.content`; the build-time backport and parser/grammar test require a proper calls block and typed `tool_calls`. `auto` was unaffected, and the canary source already carried the fixed detector.
+**Fixed: logprob decode hang.** Images built from `57a9888` and earlier main commits hang every rank on a greedy native `/generate` with `return_logprob` on long code prompts. The cause was the SGLang #45251 backport, now removed; see the CHANGELOG.
 
-Every earlier measurement, the per-stage tables and the experiments that were tried and not adopted are in [docs/history.md](docs/history.md); what changed when is in [CHANGELOG.md](CHANGELOG.md).
+Earlier measurements, including the v2.4 table on the original checkpoint, the per-stage tables and the experiments that were tried and not adopted, are in [docs/history.md](docs/history.md); what changed when is in [CHANGELOG.md](CHANGELOG.md).
 
-## What the historical pre-fix v2.4 profile ran
+## What the production profile runs
 
 | Layer | Setting | What it does |
 |---|---|---|
@@ -127,10 +117,10 @@ Same launcher as upstream; read [`docs/README-upstream.md`](docs/README-upstream
 
 ```bash
 cp .env.tp4.example .env.tp4          # fill in HEAD_IP / WORKER_* / MODEL_DIR / fabric
-# conservative start: uncomment IMAGE=dsv41-4x-spark:canary-roce and the v2.1-compatible
-# EXTRA_CONTAINER_ENV line; rebuild the image so it contains the issue #16 backport,
-# set BUILD_DOCKERFILE=Dockerfile.canary-roce and EP_SIZE=1 (the file default EP_SIZE=2 is for the
-# base/canary images)
+# production: uncomment IMAGE=dsv41-4x-spark:canary-roce, BUILD_DOCKERFILE=Dockerfile.canary-roce
+# and the "Production profile" block (EXTRA_CONTAINER_ENV, CHUNKED_PREFILL_SIZE, the memory
+# fractions, EXTRA_SGLANG_ARGS), and set EP_SIZE=1 (the file default EP_SIZE=2 is for the
+# base/canary images); the "Conservative fallback profile" block is the v2.1 feature set
 ./start-tp4.sh download               # 476 GiB at the pinned revision, needs the hf CLI; skips when complete
 scripts/fetch-sglang-canary.sh        # stages the pinned dsv4.1 branch tree
 ./start-tp4.sh doctor
@@ -138,6 +128,8 @@ scripts/fetch-sglang-canary.sh        # stages the pinned dsv4.1 branch tree
 ./start-tp4.sh share && ./start-tp4.sh pack   # first time only, see upstream README
 ./start-tp4.sh serve                  # ./start-tp4.sh stop | status | logs | smoke
 ```
+
+The canary images have about 148 layers. A node whose Docker storage driver is `overlay2` (`docker info -f '{{.Driver}}'`) refuses images deeper than 128 layers ("max depth exceeded"); use the containerd image store there, or load a flattened copy (`docker export` of a container from the image, `docker import`, then restore `ENV`, `WORKDIR`, `HEALTHCHECK`, `ENTRYPOINT` and `CMD` in a small Dockerfile on top).
 
 The boot log must show these lines, otherwise the profile is not active:
 
@@ -192,7 +184,7 @@ This repository is a downstream profile of **[MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-
 
 Other work this profile builds on:
 
-- **kpham-sgl**, [sgl-project/sglang#39187](https://github.com/sgl-project/sglang/pull/39187): the bounded dense-indexer prefill transient, backported here as `adapter/indexer_chunked*.py`; and [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251), whose grouped static-verify full scans are adapted to the pinned V4.1 indexer in `patches/sglang-45251-grouped-verify-indexer.patch`.
+- **kpham-sgl**, [sgl-project/sglang#39187](https://github.com/sgl-project/sglang/pull/39187): the bounded dense-indexer prefill transient, backported here as `adapter/indexer_chunked*.py`.
 - **BBuf** and the SGLang `dsv4.1` branch contributors ([#39370](https://github.com/sgl-project/sglang/pull/39370), [#39646](https://github.com/sgl-project/sglang/pull/39646), [#39648](https://github.com/sgl-project/sglang/pull/39648), [#39653](https://github.com/sgl-project/sglang/pull/39653)): the decode kernel work in the optional `Dockerfile.canary` image.
 - **Vineel Bhat, Claude Fable 5.1 and hnyls2002**, [SGLang #41303](https://github.com/sgl-project/sglang/pull/41303): keeping a full SWA window for short decoder bounded-replay extends and holding the window back from ordinary prefix-cache matches; backported to the pinned tree in `patches/sglang-41303-bounded-replay-window.patch`.
 - **Yi (Vincent) Zhong**, [SGLang #42901](https://github.com/sgl-project/sglang/pull/42901): avoiding discarded layer-20 indexer, attention and MoE work on early prompt rows under decoder bounded replay. The adaptation for the pinned pre-`HcState` tree is in `patches/sglang-42901-layer20-tail.patch`; it is source-qualified but has not yet been benchmarked on GB10.
@@ -217,6 +209,10 @@ Other work this profile builds on:
 - **hnyls2002**, [SGLang #45579](https://github.com/sgl-project/sglang/pull/45579) commit [`ad55c50b`](https://github.com/sgl-project/sglang/commit/ad55c50bc3a45bdf957626eb0a9350ca0f4f5176): compute request-window SWA history source rows once per prefill layout and reuse them across layers; the pinned-tree adaptation preserves the original address and zero-row semantics.
 - **alphabetc1**, [SGLang #45726](https://github.com/sgl-project/sglang/pull/45726) merge [`9d5386fd`](https://github.com/sgl-project/sglang/commit/9d5386fd13f7a91e9e84dc0c0ab61c5b1fbaba98): fuse CUDA request-window query and history metadata construction into two Triton kernels. The exact upstream kernel is content-pinned; only its older-tree call site is adapted locally.
 - **hnyls2002**, [SGLang #45586](https://github.com/sgl-project/sglang/pull/45586) and [#45699](https://github.com/sgl-project/sglang/pull/45699): route idle SWA stores before reading stale/unset attention metadata, using a cached idle request-window layout when encoder replay is enabled and the translated dummy slot otherwise.
+- **Divy (divyvasal) and Claude Opus 5.5**, [SGLang #44923](https://github.com/sgl-project/sglang/pull/44923) commit [`6e0355d9`](https://github.com/sgl-project/sglang/commit/6e0355d972cb926f137d2b8bb70caf5c9af5d129): keep per-row greedy flags on the host and recompute `is_all_greedy` / `is_any_greedy` when finished requests leave the batch, so a greedy decode batch that once held a sampled request returns to DSpark's folded verify path instead of staying on the eager accept path until it drains. Ported from the open PR with `patches/sglang-44923-greedy-flags-refresh.patch`; not yet measured on GB10.
+- **DeepSeek**, [`inference/model.py` revision `4dd75a8b`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/commit/4dd75a8b448d95ae8e284d5c5a1e4b8808bd583b) of DeepSeek-V4.1-Flash (2026-10-12; the same code ships with [DeepSeek-V4.1-Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017)): the reference rounds the attention output to FP8 (32-value blocks, power-of-two scales) before `wo_a`, in the target and the DSpark draft attention. Mirrored by the opt-in `adapter/wo_a_input_fp8.py` (`DSV41_WO_A_INPUT_FP8=1`, off by default, not yet measured on GB10).
+- **05yuki**, [SGLang #45185](https://github.com/sgl-project/sglang/pull/45185) (open): the same quantize-dequantize of `o` before the bf16 `wo_a` in SGLang's V4 attention and DSpark draft, including the fp32 emulation of the e4m3 rounding that `DSV41_WO_A_INPUT_FP8_EMULATE=1` follows.
+- **christopherowen**, [spark-ds41f](https://github.com/christopherowen/spark-ds41f): adopted the reference's WO-A input quantization in its vLLM recipe for DGX Spark (first inside the W8A16 GEMM's tile load, then in the sparse MLA kernels' output store), which pointed us to the change.
 - **hushengkai**, for independently reproducing the EP2 / Engram cache / shared-expert padding changes on a second 4x GB10 fleet.
 - **rhys101**, [DeepSeek-V4.1-Flash-vLLM-DGX-Spark-8](https://github.com/rhys101/DeepSeek-V4.1-Flash-vLLM-DGX-Spark-8): the SG17 SGLang overlay that routes small tensor-parallel all-reduces to RoCEnante (reused with a TP4 adaptation in `Dockerfile.canary-roce`) and the SG18 native prefill TP split (`adapter/spark_prefill_dense.py`, combined with the indexer backport in `adapter/indexer_chunked_v3.py`).
 - **local-inference-lab / Luke Alonso and Jason (original-el8)**, [b12x](https://github.com/local-inference-lab/b12x): RoCEnante, the one-shot RDMA all-reduce (`runtime/b12x`, Apache-2.0, frozen at the SG17 revision), and the fused MoE kernels that run the routed experts (`runtime/b12x_next`: b12x main at `a7d7d29b`, renamed so both revisions live in one image, with the local M64 prefill admission and Luke Alonso's [scratch-alignment fix](https://github.com/local-inference-lab/b12x/commit/3f8b71d991df31a9aa851604fc999fd72f08aa93)).
