@@ -61,8 +61,8 @@ def _allreduce_blocks(nbytes: int) -> int:
     return 2 if nbytes <= 16384 else 4 if nbytes <= 65536 else 8
 
 DEFAULT_GID_INDEX = 3
-# Polls of a peer flag before the kernel gives up (each poll is a system-scope
-# load of host memory, roughly a microsecond): about 20 s.
+# Peer-flag poll budget before the kernel gives up; elapsed time depends on
+# memory latency and scheduling, so this is not a wall-clock timeout.
 DEFAULT_SPIN_LIMIT = 20_000_000
 _SLOT_ALIGNMENT = 4096
 _DTYPE_NAMES = {
@@ -308,9 +308,9 @@ class RoceOneshotAllReduce:
         self._send_base = host_ptr + self._layout.send_off
         self._ctrl_base = host_ptr + self._layout.ctrl_off
         # ctrl record (kernel-written): seq, nbytes, error seq, missing peer,
-        # nbytes per slot (the proxy uses these when it has to catch up)
+        # nbytes per slot (proxy catch-up), timeout flag independent of seq
         self._ctrl_words = self._region[
-            self._layout.ctrl_off : self._layout.ctrl_off + 24
+            self._layout.ctrl_off : self._layout.ctrl_off + 28
         ].view(torch.int32)
         self._error_word = self._ctrl_words[2:3]
         # numpy view of the control words: reading it costs nanoseconds, so the
@@ -663,13 +663,13 @@ class RoceOneshotAllReduce:
 
         if self._proxy is not None and self._proxy.failed():
             raise RuntimeError(f"RoCE proxy failed: {self._proxy.error()}")
-        failed_seq = int(self._ctrl_np[2])
-        if failed_seq != 0:
+        failed_seq = int(self._ctrl_np[2]) & 0xFFFFFFFF
+        if int(self._ctrl_np[6]) != 0:
             peer = int(self._ctrl_np[3])
             raise RuntimeError(
                 f"RoCE collective on rank {self.rank} timed out waiting for rank {peer} "
                 f"at sequence {failed_seq}; the runtime is poisoned (its epoch stopped at "
-                f"{failed_seq - 1}, later launches do nothing) and rank data is no "
+                f"{(failed_seq - 1) & 0xFFFFFFFF}, later launches do nothing) and rank data is no "
                 "longer trustworthy"
             )
 
@@ -677,7 +677,7 @@ class RoceOneshotAllReduce:
     def poisoned(self) -> bool:
         """True once a wait timed out or the proxy failed; the runtime cannot be reused."""
 
-        return (self._proxy is not None and self._proxy.failed()) or int(self._ctrl_np[2]) != 0
+        return (self._proxy is not None and self._proxy.failed()) or int(self._ctrl_np[6]) != 0
 
     # -- all-gather ---------------------------------------------------------------
 
@@ -873,7 +873,8 @@ class RoceOneshotAllReduce:
             "max_gather_bytes": self.max_gather_bytes,
             "slot_bytes": self._slot_bytes,
             "epoch": int(self._counters[0].item()),
-            "error_seq": int(self._error_word.item()),
+            "error_seq": int(self._error_word.item()) & 0xFFFFFFFF,
+            "timed_out": bool(self._ctrl_words[6].item()),
             "error_peer": int(self._ctrl_words[3].item()),
             "ctrl_seq": int(self._ctrl_words[0].item()),
             "spin_limit": self.spin_limit,

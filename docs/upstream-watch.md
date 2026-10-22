@@ -5,6 +5,13 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- The active switchless-ring overlay now carries sparkring's bounded fixes
+  `2d83bb6`, `e4d0921` and `f91b5c8`: atomically sampled proxy diagnostics,
+  precise system-scope/poll-budget contracts, and a timeout flag independent of
+  the uint32 operation sequence. The last item closes a real wraparound hole:
+  sequence zero could previously encode both "healthy" and "timed out". The
+  measured frozen path-routing base stays pinned; this is a stability port and
+  makes no TPS claim pending a later fleet build.
 - [SGLang #45450](https://github.com/sgl-project/sglang/pull/45450)'s second
   commit is now carried as a bounded draft-only port. It resolves the exact
   stale-pointer failure recorded for the old adapter `dglue`: the replay view
