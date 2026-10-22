@@ -1,6 +1,6 @@
 # Issue #16: decoder SWA / prefix-cache CUDA faults
 
-Status: **resolved in main by PR #18; old v2.4 images require a rebuild**.
+Status: **resolved in main by PR #18; old v2.4 images require a rebuild. The v2.4 lever set was re-qualified on rebuilt images on 2026-10-22 (below) and is the production profile again.**
 
 ## Evidence
 
@@ -62,3 +62,24 @@ Run only in an announced maintenance window; preserve kernel logs after every st
 Acceptance requires zero CUDA errors, Xids, worker exits, empty replies or quality regressions
 across both boots; stable decode/prefill performance is secondary. This focused check is a
 deployment regression for rebuilt images, not a prerequisite for the already-merged source fix.
+
+## Qualification 2026-10-22
+
+Fleet: 4x DGX Spark TP4 over the switch, checkpoint DeepSeek-V4.1-Flash-1017 (abliterated
+`517efab`), the full v2.4 lever set (sync-free, eager glue, compact gather, L2 `wo_a` prefetch,
+certified head, `--swa-prefix-tails 128`, `--prefill-decode-interval 2`, 8192-token chunks,
+`DSV41_PREFILL_BYPASS=256`) on images containing the #41303 backport. Step 4's one-delta-at-a-time
+order was not needed: the whole set ran the accelerated reproducer
+(`scripts/issue16_repro.py`: 190K / 379K / 758K / 900K cached prefixes, 512-4096 fresh tokens,
+alternating c1 and c4, stop on the first failure) on two independent cold boots.
+
+| Boot | Image | Minutes | Requests | Warm-prefix hits | Failures | CUDA errors / Xid in rank logs |
+|---|---|---:|---:|---:|---:|---|
+| 1 | `57a9888` image + `030813a` SGLang tree | 40 | 1,445 | 1,443 | 0 | none |
+| 2 | `f9a1de4` (after the release gate on the same boot) | 30 | 813 | 809 | 0 | none |
+
+Boot 2 ran after the full release gate on the same boot (needle, 388K cold prefill, KL panels), so
+its first minutes re-prefilled evicted documents and it stayed below the 1,000-request target of
+step 3; together the two boots answered 2,258 warm-prefix requests without a failure. Evidence
+lives with the maintainers' fleet logs (reproducer JSONL per request, rank logs grepped for Xid,
+`illegal`, `CUDA error`, `Traceback`).

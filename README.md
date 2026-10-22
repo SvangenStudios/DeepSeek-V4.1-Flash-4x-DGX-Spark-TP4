@@ -4,7 +4,7 @@
 
 ## Current results
 
-Image `Dockerfile.canary-roce` at `030813a` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251, + the prefill-SP fix; measured on the `57a9888` image with its SGLang files replaced by the `030813a` staging, byte for byte), the "Conservative fallback profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) at `517efab`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. Speculative decoding makes tok/s depend on the generated text, so the official checkpoint and other DeepSeek releases give somewhat different numbers on the same prompts.
+Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251), the "Production profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) at `517efab`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. Speculative decoding makes tok/s depend on the generated text, so the official checkpoint and other DeepSeek releases give somewhat different numbers on the same prompts.
 
 ### sparkDash 1.8.8
 
@@ -14,18 +14,18 @@ Image `Dockerfile.canary-roce` at `030813a` (SGLang `dsv4.1` `f80c91a4b` + the c
 
 | prompt type | c1 | c2 | c4 | c8 | c16 |
 |---|---:|---:|---:|---:|---:|
-| prose | **84.8** | 122.3 (61.9) | 166.6 (43.1) | 235.7 (31.2) | 336.7 (21.8) |
-| code | 138.8 | 182.7 (92.3) | 242.9 (64.3) | 317.6 (42.0) | 457.8 (30.6) |
-| structured | 153.8 | 217.7 (112.9) | 218.2 (72.6) | 275.3 (42.2) | 375.3 (32.1) |
-| json | 126.0 | 176.4 (89.1) | 298.5 (76.1) | 476.9 (61.9) | 684.8 (44.7) |
+| prose | **88.6** | 124.7 (63.1) | 170.1 (44.0) | 235.0 (31.1) | 337.6 (21.9) |
+| code | 144.9 | 181.2 (91.6) | 242.8 (64.9) | 313.1 (41.4) | 456.9 (30.4) |
+| structured | 158.4 | 216.3 (112.1) | 221.0 (73.2) | 272.8 (41.5) | 377.5 (32.1) |
+| json | 128.1 | 181.7 (91.7) | 304.2 (77.6) | 471.0 (61.0) | 690.1 (45.1) |
 
 **Prefill, cold, tok/s**
 
 | 4k | 16k | 32k | 64k | 128k |
 |---:|---:|---:|---:|---:|
-| 4805 | 5814 | 5938 | 5963 | 5964 |
+| 4855 | 5957 | 6043 | 6164 | 6214 |
 
-**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 84.8 / 84.6 / 85.1; code 132.8 / 140.1 / 138.8; structured 152.5 / 153.8 / 155.5; json 123.1 / 126.1 / 127.2). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
+**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 88.1 / 89.1 / 88.6; code 134.8 / 144.9 / 144.9; structured 155.2 / 159.7 / 158.4; json 125.8 / 131.1 / 128.1). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
 
 ### speedbench
 
@@ -33,17 +33,17 @@ Image `Dockerfile.canary-roce` at `030813a` (SGLang `dsv4.1` `f80c91a4b` + the c
 
 | Category | prose | code | structured | agentic | multilingual | long context | all 73 prompts |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| tok/s | 61.2 | 105.3 | 100.1 | 93.6 | 65.9 | 86.6 | 83.1 |
+| tok/s | 63.3 | 108.7 | 103.2 | 97.3 | 67.7 | 89.9 | 85.9 |
 
-Median time to first token 215 ms; 73 of 73 prompts valid, none failed.
+Median time to first token 219 ms; 73 of 73 prompts valid, none failed.
 
-**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 387k tokens (passphrase at 50 % depth; 23 s and 77 s); cold prefill of a 388K-token varied-text prompt 77.0 s (5,037 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; `ds_gate.py kld` long and short panels (native `/generate` with top-10 logprobs, 16.5k-40k-token prompts) against the stable 1017 image: continuation KL 0.0067 and 0.0073, PASS.
+**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 388k tokens (passphrase at 50 % depth; 22 s and 71 s); cold prefill of a 387K-token varied-text prompt 68.2 s (5,677 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; `ds_gate.py kld` long and short panels (native `/generate` with top-10 logprobs, 16.5k-40k-token prompts) against the stable 1017 image: continuation KL 0.0062 and 0.0061, PASS. Issue #16 accelerated reproducer (`scripts/issue16_repro.py`: 190K-900K cached prefixes with 512-4096 fresh tokens, alternating c1/c4): 813 requests in 30 minutes on this boot, 1,445 in 40 minutes on an earlier boot of the same tree, 0 failures, no CUDA error or Xid on any rank ([docs/issue-16-swa-crash.md](docs/issue-16-swa-crash.md)).
 
 **Fixed: logprob decode hang.** Images built from `57a9888` and earlier main commits hang every rank on a greedy native `/generate` with `return_logprob` on long code prompts. The cause was the SGLang #45251 backport, now removed; see the CHANGELOG.
 
 Earlier measurements, including the v2.4 table on the original checkpoint, the per-stage tables and the experiments that were tried and not adopted, are in [docs/history.md](docs/history.md); what changed when is in [CHANGELOG.md](CHANGELOG.md).
 
-## What the historical pre-fix v2.4 profile ran
+## What the production profile runs
 
 | Layer | Setting | What it does |
 |---|---|---|
@@ -117,10 +117,10 @@ Same launcher as upstream; read [`docs/README-upstream.md`](docs/README-upstream
 
 ```bash
 cp .env.tp4.example .env.tp4          # fill in HEAD_IP / WORKER_* / MODEL_DIR / fabric
-# conservative start: uncomment IMAGE=dsv41-4x-spark:canary-roce and the v2.1-compatible
-# EXTRA_CONTAINER_ENV line; rebuild the image so it contains the issue #16 backport,
-# set BUILD_DOCKERFILE=Dockerfile.canary-roce and EP_SIZE=1 (the file default EP_SIZE=2 is for the
-# base/canary images)
+# production: uncomment IMAGE=dsv41-4x-spark:canary-roce, BUILD_DOCKERFILE=Dockerfile.canary-roce
+# and the "Production profile" block (EXTRA_CONTAINER_ENV, CHUNKED_PREFILL_SIZE, the memory
+# fractions, EXTRA_SGLANG_ARGS), and set EP_SIZE=1 (the file default EP_SIZE=2 is for the
+# base/canary images); the "Conservative fallback profile" block is the v2.1 feature set
 ./start-tp4.sh download               # 476 GiB at the pinned revision, needs the hf CLI; skips when complete
 scripts/fetch-sglang-canary.sh        # stages the pinned dsv4.1 branch tree
 ./start-tp4.sh doctor
@@ -128,6 +128,8 @@ scripts/fetch-sglang-canary.sh        # stages the pinned dsv4.1 branch tree
 ./start-tp4.sh share && ./start-tp4.sh pack   # first time only, see upstream README
 ./start-tp4.sh serve                  # ./start-tp4.sh stop | status | logs | smoke
 ```
+
+The canary images have about 148 layers. A node whose Docker storage driver is `overlay2` (`docker info -f '{{.Driver}}'`) refuses images deeper than 128 layers ("max depth exceeded"); use the containerd image store there, or load a flattened copy (`docker export` of a container from the image, `docker import`, then restore `ENV`, `WORKDIR`, `HEALTHCHECK`, `ENTRYPOINT` and `CMD` in a small Dockerfile on top).
 
 The boot log must show these lines, otherwise the profile is not active:
 

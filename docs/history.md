@@ -4,6 +4,19 @@ Every dated table, note and rejected experiment that used to live in the README,
 
 All rows below were taken with sparkDash up to 1.8.6. sparkDash 1.8.7 replaced the code prompts (c1 and the concurrent waves), so the code columns here are not comparable with the README's current table; the prose, structured and prefill prompts are unchanged.
 
+## Conservative fallback profile 2026-10-22 (1017 checkpoint), sparkDash 1.8.8
+
+Served 2026-10-22 between the issue #16 quarantine and the re-qualification of the v2.4 levers: the "Conservative fallback profile" block of `.env.tp4.example` (v2.1 feature set, 4096-token chunks, memory fraction 0.80), `EP_SIZE=1`, checkpoint `mrfakename/DeepSeek-V4.1-Flash-1017-abliterated` at `517efab`, image of `57a9888` with the SGLang tree of `030813a` (no #45251), GPU clock cap 2200 MHz, one fresh boot, same protocol as the README.
+
+| prompt type | c1 | c2 | c4 | c8 | c16 |
+|---|---:|---:|---:|---:|---:|
+| prose | 84.8 | 122.3 (61.9) | 166.6 (43.1) | 235.7 (31.2) | 336.7 (21.8) |
+| code | 138.8 | 182.7 (92.3) | 242.9 (64.3) | 317.6 (42.0) | 457.8 (30.6) |
+| structured | 153.8 | 217.7 (112.9) | 218.2 (72.6) | 275.3 (42.2) | 375.3 (32.1) |
+| json | 126.0 | 176.4 (89.1) | 298.5 (76.1) | 476.9 (61.9) | 684.8 (44.7) |
+
+Prefill, cold, tok/s: 4k 4805, 16k 5814, 32k 5938, 64k 5963, 128k 5964. speedbench 0.3 full: prose 61.2, code 105.3, structured 100.1, agentic 93.6, multilingual 65.9, long context 86.6, all 83.1. Cold 388K prefill 77.0 s (5,037 tok/s). qeval 71/75, tscan 0/35.
+
 ## Production 2026-10-12 (v2.4, image before the issue #16 fix), sparkDash 1.8.8
 
 These measurements remain useful as historical performance data, but their image predates the issue #16 fix. Stack v2.4 (the historical `EXTRA_CONTAINER_ENV` line of [`.env.tp4.example`](../.env.tp4.example) with its settings block, `EP_SIZE=1`, `Dockerfile.canary-roce` image), built from a clean tree on all four nodes, sparkDash 1.8.8: 256 new tokens, temperature 0, thinking off, idle fleet, 2026-10-12. KV pool 3.67M tokens, 1M context. Raw output: [`docs/results/validation-20261012-v24.txt`](results/validation-20261012-v24.txt). Measurements from other fleets are linked, with their dates, in [`docs/community-results.md`](community-results.md).

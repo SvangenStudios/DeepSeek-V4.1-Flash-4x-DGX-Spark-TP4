@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 2026-10-22 v2.5
+
+Production profile = the v2.4 lever set again, now on an image with the issue #16 backport, the
+logprob decode hang fixed and the Linux staging repaired. Image `Dockerfile.canary-roce` at
+`f9a1de4`, checkpoint DeepSeek-V4.1-Flash-1017 (abliterated `517efab`), one fresh boot:
+sparkDash prose / code / structured / json c1 88.6 / 144.9 / 158.4 / 128.1 (conservative fallback
+profile on the same checkpoint: 84.8 / 138.8 / 153.8 / 126.0), speedbench all 85.9 (83.1), cold
+387K prefill 68.2 s (77.0 s); KL panels against the stable 1017 image PASS (0.0062 / 0.0061),
+qeval 71/75, T>0 scan 0/35. The accelerated issue #16 reproducer passed on two cold boots
+(1,445 and 813 requests on 190K-900K cached prefixes, 0 failures, no CUDA error or Xid; see
+`docs/issue-16-swa-crash.md`).
+
 
 - `scripts/fetch-sglang-canary.sh` failed on Linux: GNU patch rejects a hunk whose leading and
   trailing context differ in length unless it sits at the file's start or end, and the #44751,
