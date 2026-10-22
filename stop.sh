@@ -118,8 +118,12 @@ pkill -f "docker logs -f ${HEAD_CTN}" >/dev/null 2>&1 || true
 info "head: SIGTERM sglang in $HEAD_CTN, then remove"
 _stop_sglang_in "$HEAD_CTN"
 _rm_ctn "$HEAD_CTN"
-# anything else this recipe named
-ids=$(docker ps -aq --filter "name=dsv41-" 2>/dev/null || true)
+# Anything else this recipe named, except the shared NFS exporter.  The
+# exporter is deliberately kept across serving restarts; killing dsv41-nfs
+# here makes the worker volumes unavailable and turns the next `share` into a
+# slow/stuck exporter teardown.
+ids=$(docker ps -a --filter "name=dsv41-" --format '{{.ID}} {{.Names}}' 2>/dev/null \
+  | awk '$2 != "dsv41-nfs" { print $1 }' || true)
 if [[ -n "$ids" ]]; then
   # shellcheck disable=SC2086
   timeout "$RM_TIMEOUT" docker rm -f $ids >/dev/null 2>&1 || true
@@ -136,7 +140,8 @@ for h in "${WORKER_HOSTS[@]}"; do
       ' 2>/dev/null || true
     fi
     timeout ${RM_TIMEOUT} docker rm -f $(printf '%q' "$WORKER_CTN") >/dev/null 2>&1 || docker rm -f $(printf '%q' "$WORKER_CTN") >/dev/null 2>&1 || true
-    ids=\$(docker ps -aq --filter name=dsv41- 2>/dev/null || true)
+    ids=\$(docker ps -a --filter name=dsv41- --format '{{.ID}} {{.Names}}' 2>/dev/null \
+      | awk '\$2 != "dsv41-nfs" { print \$1 }' || true)
     [ -n \"\$ids\" ] && docker rm -f \$ids >/dev/null 2>&1 || true
     echo STOPPED_$h
   " 2>/dev/null | grep -q "STOPPED_$h"; then
