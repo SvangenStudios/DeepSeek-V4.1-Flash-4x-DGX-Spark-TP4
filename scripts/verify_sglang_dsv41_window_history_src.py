@@ -66,7 +66,10 @@ def verify(python_root: Path) -> None:
     )
     if formula not in " ".join(builder_source.split()):
         raise SystemExit("history_src is not computed from the upstream row formula")
-    if builder_source.index("history_src = torch.where(") > builder_source.index(
+    # The later #45726 fused CUDA path returns a WindowLayout before entering
+    # this CPU fallback; compare against the fallback's final constructor, not
+    # the first (CUDA) constructor in the function.
+    if builder_source.index("history_src = torch.where(") > builder_source.rindex(
         "return WindowLayout("
     ):
         raise SystemExit("history_src is computed after layout construction")
