@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Backport JiaShuai0209 and Liangsheng Yin's merged SGLang #40424
+  (`720857de`) to the pinned V4.1 paths. An eager DP-attention extend now
+  slices low-ratio source inputs to the hoisted live-row prefix before request
+  indexing, so padding cannot create uninitialized request ids and a CUDA
+  device assert. Padded idle Engram batches return correctly shaped zero hashes
+  before request-table access instead of failing the extend-mode assertion.
+  Extracted production-statement tests cover padded, unpadded and idle cases.
 - Adapt Liangsheng Yin's merged SGLang #45301 (`117247ea`) to the pinned
   V4.1 attention class split. TP-padded query storage now grows only before a
   decoder-tail CUDA graph captures it; smaller row buckets reuse slices of the
