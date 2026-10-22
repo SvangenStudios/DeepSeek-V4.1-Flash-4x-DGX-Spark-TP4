@@ -14,6 +14,7 @@ PATCH_INLINE_SYSTEM="$ROOT/patches/sglang-43549-dsv41-inline-system.patch"
 PATCH_TOOL_IMAGES_THINKING="$ROOT/patches/sglang-44751-dsv41-tool-images-thinking.patch"
 PATCH_DSV41_PADDED_QUERY="$ROOT/patches/sglang-45301-dsv41-padded-query-buffer.patch"
 PATCH_DSV41_DP_PADDING="$ROOT/patches/sglang-40424-dsv41-dp-padding.patch"
+PATCH_MHC_PREWARM_NO_CHUNK="$ROOT/patches/sglang-43448-mhc-prewarm-no-chunk.patch"
 PATCH_DSPARK_ACCEPT="$ROOT/patches/sglang-45663-dspark-accept-outputs.patch"
 PATCH_DSPARK_SOFTMAX_CLAMP="$ROOT/patches/sglang-45518-dspark-softmax-clamp.patch"
 PATCH_DSPARK_RESTAGE="$ROOT/patches/sglang-45450-dspark-param-restage.patch"
@@ -40,6 +41,8 @@ DSV41_PADDED_QUERY_REF="117247ea2f9ba77cc8d47005553d3eed18e3a7bc"
 DSV41_PADDED_QUERY_PATCH_SHA256="6cbfa3fef31507cb4bf8d11d38d6a24004375c2b1649fb6a794298a34bf58b19"
 DSV41_DP_PADDING_REF="720857de766ad8855286da9246418da66724596c"
 DSV41_DP_PADDING_PATCH_SHA256="27cfd0e1511733fc853cd0f55679cab9b536c4422f40f2dac902a73b4d7c46e3"
+MHC_PREWARM_NO_CHUNK_REF="422280382336eba5daa5233f16a26f904646442d"
+MHC_PREWARM_NO_CHUNK_PATCH_SHA256="8c559f5c7d5a0ecb520d592c5445680119d8565607223c0ba56d5e69852505ec"
 REASONING_END_REF="2592a6d211b56f503707760b158a635510baaf9b"
 REASONING_END_TEST_SHA256="e1d3bb204617a08abea100c3b5be6de49d8c68483d29de90298c12f10ea204c9"
 DSPARK_DRAFT_PARAMS_REF="833e51899fb160b20645a868bf000a98fd3181a4"
@@ -129,6 +132,12 @@ patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_DP_PADDING"
 patch --silent --fuzz=0 -p1 < "$PATCH_DSV41_DP_PADDING"
 python3 "$ROOT/scripts/verify_sglang_dsv41_dp_padding.py" "$DST/python"
 python3 "$ROOT/scripts/test_sglang_dsv41_dp_padding.py" "$DST/python"
+echo "applying SGLang #43448 no-chunk MHC prewarm fallback ..."
+printf '%s  %s\n' "$MHC_PREWARM_NO_CHUNK_PATCH_SHA256" "$PATCH_MHC_PREWARM_NO_CHUNK" | shasum -a 256 -c -
+patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_MHC_PREWARM_NO_CHUNK"
+patch --silent --fuzz=0 -p1 < "$PATCH_MHC_PREWARM_NO_CHUNK"
+python3 "$ROOT/scripts/verify_sglang_mhc_prewarm_no_chunk.py" "$DST/python"
+python3 "$ROOT/scripts/test_sglang_mhc_prewarm_no_chunk.py" "$DST/python"
 echo "installing exact SGLang #45457 plain-text helper and pinned-tree integration ..."
 PLAIN_TEXT_PATH="$DST/python/sglang/srt/entrypoints/openai/plain_text_encode.py"
 curl -fsSL -m 120 \
@@ -254,6 +263,7 @@ printf '%s\n' \
   "44751 $TOOL_IMAGES_THINKING_REF patch-sha256=$TOOL_IMAGES_THINKING_PATCH_SHA256" \
   "45301 $DSV41_PADDED_QUERY_REF patch-sha256=$DSV41_PADDED_QUERY_PATCH_SHA256" \
   "40424 $DSV41_DP_PADDING_REF patch-sha256=$DSV41_DP_PADDING_PATCH_SHA256" \
+  "43448 $MHC_PREWARM_NO_CHUNK_REF patch-sha256=$MHC_PREWARM_NO_CHUNK_PATCH_SHA256" \
   "45457 $PLAIN_TEXT_REF helper-sha256=$PLAIN_TEXT_SHA256 test-sha256=$PLAIN_TEXT_TEST_SHA256" \
   "45458 $REASONING_END_REF test-sha256=$REASONING_END_TEST_SHA256" \
   "45663 $DSPARK_DRAFT_PARAMS_REF helper-sha256=$DSPARK_DRAFT_PARAMS_SHA256 accept-patch-sha256=b44e8522f386acf02050254307ad71a8f1584af3b5943207faa7c0f0c6ee5fe9" \
@@ -271,4 +281,4 @@ printf '%s\n' \
   "45251 $DSV41_GROUPED_VERIFY_INDEXER_REF patch-sha256=$DSV41_GROUPED_VERIFY_INDEXER_PATCH_SHA256" \
   "45450-draft-glue $DSV41_DRAFT_METADATA_GLUE_REF patch-sha256=$DSV41_DRAFT_METADATA_GLUE_PATCH_SHA256" > PATCHES
 du -sh python
-echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#44751/#45301/#40424/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804/#45579/#45726/#45586/#45699/#45251/#45450-draft-glue backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."
+echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#44751/#45301/#40424/#43448/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804/#45579/#45726/#45586/#45699/#45251/#45450-draft-glue backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."

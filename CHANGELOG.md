@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Backport maocheng23 and Claude Opus 5.5's merged SGLang #43448
+  (`42228038`). When chunked prefill is disabled or unset, V4.1 MHC kernel
+  prewarm now derives its token buckets from `max_prefill_tokens` instead of a
+  non-positive chunk size. This fixes startup/weight-load failure for valid
+  `CHUNKED_PREFILL_SIZE=-1`, `0` and unset configurations without changing the
+  default positive-chunk profile. Extracted tests cover all four cases.
 - Backport JiaShuai0209 and Liangsheng Yin's merged SGLang #40424
   (`720857de`) to the pinned V4.1 paths. An eager DP-attention extend now
   slices low-ratio source inputs to the hoisted live-row prefix before request

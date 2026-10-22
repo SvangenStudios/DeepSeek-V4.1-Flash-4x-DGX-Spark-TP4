@@ -5,6 +5,12 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #43448](https://github.com/sgl-project/sglang/pull/43448) is carried
+  as a small startup robustness fix. The pinned MHC prewarm passed
+  `chunked_prefill_size` directly into its bucket builder; `-1`, `0` or unset
+  therefore failed before serving. The fallback uses `max_prefill_tokens`, the
+  actual unchunked prefill bound. The default positive-chunk profile is
+  byte-for-byte on the original branch of the conditional.
 - [SGLang #40424](https://github.com/sgl-project/sglang/pull/40424) is carried
   because both vulnerable sites exist unchanged in this pin. DP attention may
   pad an eager extend beyond `extend_seq_lens`; low-ratio sources now slice to
