@@ -5,6 +5,13 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #45301](https://github.com/sgl-project/sglang/pull/45301) is carried as
+  a bounded stability port because the pinned TP4 tree has the exact vulnerable
+  pattern: replacing `q_pad_buffer` whenever a decoder-tail graph bucket changes
+  shape. One buffer now grows before capture, smaller buckets take row slices,
+  and post-capture growth is rejected so replay cannot write through a freed
+  address. Upstream reproduced the old path as an MMU fault after cache flush;
+  this is a correctness fix, not a TPS claim.
 - [SGLang #44751](https://github.com/sgl-project/sglang/pull/44751) is carried as
   a zero-fuzz 1017 encoder adaptation. It matches DeepSeek's updated ordering
   for images inside tool results and keeps assistant reasoning across a

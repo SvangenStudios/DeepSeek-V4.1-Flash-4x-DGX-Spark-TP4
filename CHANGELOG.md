@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Adapt Liangsheng Yin's merged SGLang #45301 (`117247ea`) to the pinned
+  V4.1 attention class split. TP-padded query storage now grows only before a
+  decoder-tail CUDA graph captures it; smaller row buckets reuse slices of the
+  same allocation, and a shape/dtype expansion after capture fails closed.
+  This prevents recorded graph nodes from retaining a freed buffer address and
+  the reported MMU fault after cache flush. Source and CPU behavior falsifiers
+  cover pointer reuse, capture state, row/head growth refusal and packaging.
 - Adapt Justin Tong's merged SGLang #44751 (`a038a0dc`) to the pinned native
   V4.1 encoder. Images embedded in tool results are collected after results are
   sorted into tool-call order, list-valued tool content is preserved, and a
