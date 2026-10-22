@@ -4,7 +4,7 @@
 # 2026-09-16), plus the credited SGLang #41303 safety, #42901 layer-20,
 # #44001 scheduler, #41259/#45410 long-prompt tokenizer, #44751 tool-result
 # image/thinking ordering, #45301 graph-owned padded queries, #40424 DP-padding
-# safety and #45457 request-text control-token backports,
+# safety, #43448 no-chunk MHC prewarm and #45457 request-text control-token backports,
 # #45762 default-thinking parser parity, and
 # the kernel packages that branch pins (sglang-kernel 0.4.7,
 # sgl-deep-gemm 0.2.0; aarch64 wheels from PyPI). The SM120 page-split fix from
@@ -45,6 +45,8 @@ RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_padded_query_buffer.py /sgl-w
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_padded_query_buffer.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_dp_padding.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_dp_padding.py /sgl-workspace/sglang/python
+RUN python3 /opt/dsv41/scripts/verify_sglang_mhc_prewarm_no_chunk.py /sgl-workspace/sglang/python
+RUN python3 /opt/dsv41/scripts/test_sglang_mhc_prewarm_no_chunk.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_plain_text.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_reasoning_end.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dspark_draft_params.py /sgl-workspace/sglang/python
