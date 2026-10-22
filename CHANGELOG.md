@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Adapt Justin Tong's merged SGLang #44751 (`a038a0dc`) to the pinned native
+  V4.1 encoder. Images embedded in tool results are collected after results are
+  sorted into tool-call order, list-valued tool content is preserved, and a
+  tool-result-only user message stays in the current assistant turn instead of
+  dropping its reasoning. The local placeholder sanitizer still works on
+  private copies, so caller-owned request objects remain unchanged. Focused
+  tests cover all four accepted message shapes, image order, reasoning
+  retention/removal, immutability, zero-fuzz application and image packaging.
 - Port three bounded RoCEnante fixes from FujitsuPolycom/sparkring into the
   active switchless-ring overlay. Kernel timeout state now has a flag separate
   from the uint32 sequence, so a failure at sequence zero remains visible after
