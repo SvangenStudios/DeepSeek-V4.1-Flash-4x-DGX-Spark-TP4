@@ -5,6 +5,15 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 
 ## 2026-10-22 delta
 
+- [SGLang #45450](https://github.com/sgl-project/sglang/pull/45450)'s second
+  commit is now carried as a bounded draft-only port. It resolves the exact
+  stale-pointer failure recorded for the old adapter `dglue`: the replay view
+  is rebound to the runner registry's stable `out_cache_loc`, while uniform
+  draft extend lengths live in persistent per-batch device constants. The
+  backend must explicitly accept a host-free prep and the runner stays eager
+  outside static DSpark/FlashMLA without request windows, CP or online C128.
+  Upstream makes this small seam optimization default-on, but reports it only
+  as part of a broader GB300 stack; it awaits a same-boot GB10 A/B here.
 - [SGLang #45251](https://github.com/sgl-project/sglang/pull/45251) is carried as a bounded
   pinned-tree adaptation. Static DSpark verification reshapes six query rows into one request
   before the ratio-1/ratio-2 candidate-source and direct-fallback full scans; the C4 indexer,

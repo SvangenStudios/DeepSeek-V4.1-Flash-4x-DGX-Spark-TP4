@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Adapt Yangmin Li's second SGLang #45450 commit (`1f8e4f3e`): the static
+  DSpark draft runner now captures its device-only attention-metadata prep in
+  the existing metadata glue graph. The port rebinds `out_cache_loc` to the
+  runner's pointer-stable registry buffer and caches each batch-size extend
+  length on device, eliminating the two stale/freed-pointer hazards that made
+  the older adapter experiment unsafe. It fails closed for ragged verify,
+  request windows, context parallelism, online C128 MTP, TRT-LLM and every
+  backend that does not explicitly opt in. Upstream reports this as a small
+  default-on seam optimization; no local GB10 TPS claim is made before A/B.
 - Adapt kpham-sgl's merged SGLang #45251 for the pinned V4.1 indexer: static
   DSpark verification groups the six query rows belonging to one request before
   each full cache scan, so the paged index-K cache is traversed per request
