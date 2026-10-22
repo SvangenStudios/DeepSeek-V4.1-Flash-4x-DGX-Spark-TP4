@@ -4,7 +4,7 @@
 
 ## Current results
 
-Image `Dockerfile.canary-roce` at `57a9888` (SGLang `dsv4.1` `f80c91a4b` + the credited backports up to #50 and the prefill-SP fix), the "Conservative fallback profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) at `517efab`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. Speculative decoding makes tok/s depend on the generated text, so the official checkpoint and other DeepSeek releases give somewhat different numbers on the same prompts.
+Image `Dockerfile.canary-roce` at `030813a` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251, + the prefill-SP fix; measured on the `57a9888` image with its SGLang files replaced by the `030813a` staging, byte for byte), the "Conservative fallback profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) at `517efab`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. Speculative decoding makes tok/s depend on the generated text, so the official checkpoint and other DeepSeek releases give somewhat different numbers on the same prompts.
 
 ### sparkDash 1.8.8
 
@@ -14,18 +14,18 @@ Image `Dockerfile.canary-roce` at `57a9888` (SGLang `dsv4.1` `f80c91a4b` + the c
 
 | prompt type | c1 | c2 | c4 | c8 | c16 |
 |---|---:|---:|---:|---:|---:|
-| prose | **85.3** | 123.5 (62.5) | 166.9 (43.3) | 236.3 (31.3) | 336.1 (21.8) |
-| code | 138.8 | 183.7 (92.8) | 243.8 (64.3) | 316.5 (41.9) | 456.1 (30.5) |
-| structured | 157.6 | 216.5 (112.3) | 217.9 (73.0) | 275.8 (42.2) | 375.7 (32.0) |
-| json | 126.1 | 178.1 (89.9) | 297.2 (75.8) | 477.8 (61.9) | 684.1 (44.6) |
+| prose | **84.8** | 122.3 (61.9) | 166.6 (43.1) | 235.7 (31.2) | 336.7 (21.8) |
+| code | 138.8 | 182.7 (92.3) | 242.9 (64.3) | 317.6 (42.0) | 457.8 (30.6) |
+| structured | 153.8 | 217.7 (112.9) | 218.2 (72.6) | 275.3 (42.2) | 375.3 (32.1) |
+| json | 126.0 | 176.4 (89.1) | 298.5 (76.1) | 476.9 (61.9) | 684.8 (44.7) |
 
 **Prefill, cold, tok/s**
 
 | 4k | 16k | 32k | 64k | 128k |
 |---:|---:|---:|---:|---:|
-| 4744 | 5818 | 5901 | 5894 | 5911 |
+| 4805 | 5814 | 5938 | 5963 | 5964 |
 
-**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 85.7 / 84.6 / 85.3; code 136.4 / 141.9 / 138.8; structured 153.2 / 157.6 / 158.3; json 123.1 / 126.1 / 127.2). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
+**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 84.8 / 84.6 / 85.1; code 132.8 / 140.1 / 138.8; structured 152.5 / 153.8 / 155.5; json 123.1 / 126.1 / 127.2). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
 
 ### speedbench
 
@@ -33,13 +33,13 @@ Image `Dockerfile.canary-roce` at `57a9888` (SGLang `dsv4.1` `f80c91a4b` + the c
 
 | Category | prose | code | structured | agentic | multilingual | long context | all 73 prompts |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| tok/s | 60.9 | 105.2 | 99.5 | 93.4 | 64.8 | 87.4 | 82.8 |
+| tok/s | 61.2 | 105.3 | 100.1 | 93.6 | 65.9 | 86.6 | 83.1 |
 
-Median time to first token 216 ms; 73 of 73 prompts valid, none failed.
+Median time to first token 215 ms; 73 of 73 prompts valid, none failed.
 
-**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 388k tokens (passphrase at 50 % depth; 23 s and 78 s); cold prefill of a 388K-token varied-text prompt 76.9 s (5,038 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered.
+**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 387k tokens (passphrase at 50 % depth; 23 s and 77 s); cold prefill of a 388K-token varied-text prompt 77.0 s (5,037 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; `ds_gate.py kld` long and short panels (native `/generate` with top-10 logprobs, 16.5k-40k-token prompts) against the stable 1017 image: continuation KL 0.0067 and 0.0073, PASS.
 
-**Known issue, open.** On this image a greedy native `/generate` request with `return_logprob` and `top_logprobs_num` 10 on the 18,000-token code text of `scripts/kld_long_texts.json` hangs every rank in the first decode step (all four schedulers wait in `synchronize_and_check_roce`; the NCCL watchdog ends the engine after 10 minutes). It reproduced twice, with `DSV41_PREFILL_SP` on and off; the earlier stable 1017 image answers the same request. Chat traffic (sparkDash to c16, speedbench, the checks above) was not affected. Until it is fixed, do not send logprob requests to this image.
+**Fixed: logprob decode hang.** Images built from `57a9888` and earlier main commits hang every rank on a greedy native `/generate` with `return_logprob` on long code prompts. The cause was the SGLang #45251 backport, now removed; see the CHANGELOG.
 
 Earlier measurements, including the v2.4 table on the original checkpoint, the per-stage tables and the experiments that were tried and not adopted, are in [docs/history.md](docs/history.md); what changed when is in [CHANGELOG.md](CHANGELOG.md).
 
