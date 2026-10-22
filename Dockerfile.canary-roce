@@ -5,8 +5,8 @@
 # the credited SGLang #41303 safety and #42901 layer-20 bounded-replay backports.
 # The credited backport set also includes SGLang #44001's opt-in scheduler gate
 # #41259/#45410's fail-closed parallel tokenizer for long native prompts,
-# #44751's tool-result image/thinking ordering, #45457's request-text/control-token
-# separation and #45762's default-thinking parser parity.
+# #44751's tool-result image/thinking ordering, #45301's graph-owned padded
+# queries, #45457's request-text/control-token separation and #45762's default-thinking parser parity.
 # The tree comes from a GitHub tarball (runtime/sglang-canary/python) because the image's
 # git cannot fetch unauthenticated. Mia's SM120 page-split override is re-applied on top of
 # the branch's kernel file. Everything else is the production Dockerfile.
@@ -45,6 +45,8 @@ RUN python3 /opt/dsv41/scripts/verify_sglang_parallel_prompt_encode.py /sgl-work
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_inline_system.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_tool_images_thinking.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_tool_images_thinking.py /sgl-workspace/sglang/python
+RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_padded_query_buffer.py /sgl-workspace/sglang/python
+RUN python3 /opt/dsv41/scripts/test_sglang_dsv41_padded_query_buffer.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_plain_text.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dsv41_reasoning_end.py /sgl-workspace/sglang/python
 RUN python3 /opt/dsv41/scripts/verify_sglang_dspark_draft_params.py /sgl-workspace/sglang/python
