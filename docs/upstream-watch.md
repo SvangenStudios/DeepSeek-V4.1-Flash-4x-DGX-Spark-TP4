@@ -36,6 +36,10 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
   SWA history source rows once per prefill layout, copy them during graph refresh and reuse them across
   layers. Upstream profiling puts the replaced bookkeeping at 1.7-4.8% of scheduler-thread time on its
   GB300 prefill workloads, but it did not isolate end-to-end gain and this is not a decode/C1 claim.
+- SGLang #45726 is carried as an exact content-pinned kernel plus a narrow older-tree integration: two
+  Triton launches replace eager pointwise request-window query/history metadata construction on CUDA,
+  while CPU and HIP retain the reference path. Upstream's isolated GB300 timing was about 0.89 to 0.41 ms
+  per call at both 4K and 32K rows; local GPU parity and end-to-end effect remain unmeasured.
 - SGLang #45577/#45741 index-K plan reuse depends on the newer modular `v41_indexer` plan types absent
   from this pin. #44465 sharded accept is still an AMD/HIP draft and the served greedy path already uses
   TP-sharded greedy selection. Both remain HOLD/watch rather than being copied across incompatible APIs.
