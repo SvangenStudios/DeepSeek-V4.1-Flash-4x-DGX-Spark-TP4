@@ -21,6 +21,7 @@ PATCH_DSV41_ALIGN_WIDTH="$ROOT/patches/sglang-45794-dsv41-align-indexer-width.pa
 PATCH_DSV41_DEFAULT_THINKING="$ROOT/patches/sglang-45762-dsv41-default-thinking-parser.patch"
 PATCH_DSV41_THINKING_PARITY="$ROOT/patches/sglang-45804-dsv41-thinking-parity.patch"
 PATCH_DSV41_WINDOW_HISTORY_SRC="$ROOT/patches/sglang-45579-window-history-src.patch"
+PATCH_DSV41_FUSED_WINDOW_LAYOUT="$ROOT/patches/sglang-45726-fused-window-layout-integration.patch"
 PARALLEL_ENCODE_REF="fba3ad4b1f4563143f3352beb148c4c28d4be9ed"
 PARALLEL_ENCODE_SHA256="722cc41b1096977af3bda6c505e7c629b9b8f7308174cda1c7d2c44f9b54c097"
 PARALLEL_ENCODE_TEST_SHA256="fa1adf5c9b51fdf25cb7998e963a7de905c58cb5aa35395cf16d6c75422ecf9e"
@@ -49,6 +50,9 @@ DSV41_THINKING_PARITY_REF="af882cfe1e7ff244db2a49bb70fdc72199c68bb9"
 DSV41_THINKING_PARITY_PATCH_SHA256="47363e10d91939b906bb269ebcd2eb428142930c92c4c04643fba95475f3863c"
 DSV41_WINDOW_HISTORY_SRC_REF="ad55c50bc3a45bdf957626eb0a9350ca0f4f5176"
 DSV41_WINDOW_HISTORY_SRC_PATCH_SHA256="85241d8d32c5e80b746811b00ee3e870c33e15d71206063568a389f77caf16ef"
+DSV41_FUSED_WINDOW_LAYOUT_REF="9d5386fd13f7a91e9e84dc0c0ab61c5b1fbaba98"
+DSV41_FUSED_WINDOW_LAYOUT_SHA256="4ca6d7d7d79340bb47b9f960d1cf4828674ede86c46f1858f04fe2b6165eb171"
+DSV41_FUSED_WINDOW_LAYOUT_PATCH_SHA256="f86916dd0413c154849ed6239b108061e706a68aa5107f5578d6fca2f3c4ef5a"
 mkdir -p "$DST"
 cd "$DST"
 rm -rf python upstream-tests src.tgz
@@ -174,6 +178,17 @@ patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_WINDOW_HISTORY_SRC"
 patch --silent --fuzz=0 -p1 < "$PATCH_DSV41_WINDOW_HISTORY_SRC"
 python3 "$ROOT/scripts/verify_sglang_dsv41_window_history_src.py" "$DST/python"
 python3 "$ROOT/scripts/test_sglang_dsv41_window_history_src.py"
+echo "installing exact SGLang #45726 fused request-window layout kernel ..."
+DSV41_FUSED_WINDOW_LAYOUT_PATH="$DST/python/sglang/kernels/ops/kvcache/dsv41_window_layout.py"
+curl -fsSL -m 120 \
+  "https://raw.githubusercontent.com/sgl-project/sglang/${DSV41_FUSED_WINDOW_LAYOUT_REF}/python/sglang/kernels/ops/kvcache/dsv41_window_layout.py" \
+  -o "$DSV41_FUSED_WINDOW_LAYOUT_PATH"
+printf '%s  %s\n' "$DSV41_FUSED_WINDOW_LAYOUT_SHA256" "$DSV41_FUSED_WINDOW_LAYOUT_PATH" | shasum -a 256 -c -
+printf '%s  %s\n' "$DSV41_FUSED_WINDOW_LAYOUT_PATCH_SHA256" "$PATCH_DSV41_FUSED_WINDOW_LAYOUT" | shasum -a 256 -c -
+patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_FUSED_WINDOW_LAYOUT"
+patch --silent --fuzz=0 -p1 < "$PATCH_DSV41_FUSED_WINDOW_LAYOUT"
+python3 "$ROOT/scripts/verify_sglang_dsv41_fused_window_layout.py" "$DST/python"
+python3 "$ROOT/scripts/test_sglang_dsv41_fused_window_layout.py"
 echo "$REF" > REF
 printf '%s\n' \
   "41303 ed8c3139f1f643544b68102cf8c44504e5e55e3d" \
@@ -193,6 +208,7 @@ printf '%s\n' \
   "45794 $DSV41_ALIGN_WIDTH_REF patch-sha256=$DSV41_ALIGN_WIDTH_PATCH_SHA256" \
   "45762 $DSV41_DEFAULT_THINKING_REF patch-sha256=$DSV41_DEFAULT_THINKING_PATCH_SHA256" \
   "45804 $DSV41_THINKING_PARITY_REF patch-sha256=$DSV41_THINKING_PARITY_PATCH_SHA256" \
-  "45579 $DSV41_WINDOW_HISTORY_SRC_REF patch-sha256=$DSV41_WINDOW_HISTORY_SRC_PATCH_SHA256" > PATCHES
+  "45579 $DSV41_WINDOW_HISTORY_SRC_REF patch-sha256=$DSV41_WINDOW_HISTORY_SRC_PATCH_SHA256" \
+  "45726 $DSV41_FUSED_WINDOW_LAYOUT_REF helper-sha256=$DSV41_FUSED_WINDOW_LAYOUT_SHA256 integration-patch-sha256=$DSV41_FUSED_WINDOW_LAYOUT_PATCH_SHA256" > PATCHES
 du -sh python
-echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804/#45579 backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."
+echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804/#45579/#45726 backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."

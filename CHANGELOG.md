@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Vendor alphabetc1's exact merged SGLang #45726 Triton kernel and adapt only
+  its CUDA call site to the pinned request-window layout. Two kernels replace
+  the eager pointwise construction of query indices/lengths/commit masks and
+  history metadata after the existing request-group scans; CPU and HIP keep
+  the reference path. Upstream's isolated GB300 metadata benchmark improved
+  from roughly 0.89 to 0.41 ms per call at 4K and 32K rows. This is not an
+  end-to-end or GB10 performance claim before GPU parity and timing.
 - Adapt hnyls2002's merged SGLang #45579 to the pinned request-window
   implementation: each prefill layout computes the source row for every SWA
   history slot once, carries it through graph replay refreshes, and all layers
