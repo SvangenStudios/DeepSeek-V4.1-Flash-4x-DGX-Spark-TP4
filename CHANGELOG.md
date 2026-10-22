@@ -27,6 +27,24 @@
   source pins of `adapter/hc_fused.py`; omkaark's #45086 (no row-count
   specialization of the mHC kernels) edits two kernels whose source hashes
   `adapter/hc_fused.py` pins.
+- **`adapter/wo_a_input_fp8.py`, `DSV41_WO_A_INPUT_FP8=1`, off by default (to be A/B-tested on the
+  fleet).** Numerics parity with DeepSeek's reference: since revision
+  [`4dd75a8b`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/commit/4dd75a8b448d95ae8e284d5c5a1e4b8808bd583b) of
+  `inference/model.py` (2026-10-12, also shipped with DeepSeek-V4.1-Flash-1017) the reference rounds the
+  attention output `o` to FP8 and back before the bf16 `wo_a` einsum, in the target attention and the
+  DSpark draft attention: blocks of 32 values along each group's 4096 features, power-of-two (ue8m0)
+  scales, e4m3 round-to-nearest-even. Both checkpoints use 32x32 weight blocks, so the engine
+  dequantizes `wo_a` to bf16 and every serving path (stock GEMV / small-batch / MXFP8-epilogue / bmm /
+  einsum, `wo_a_w8`'s twin kernels, the draft's fast kernel) fed `o` unrounded; the stock
+  `wo_a_bf16_small_batch_mxfp8` quantizes `wo_a`'s output for `wo_b`, not its input. With the flag the
+  bf16 dispatch rounds `o` in place first (one Triton kernel), and `wo_a_w8`'s DROP/MID routes round
+  the loaded tile in registers (their PTX is unchanged with the flag off). Rank-local rounding is the
+  reference's: no block straddles a head, group or TP rank. `tests/test_wo_a_input_fp8.py` checks it
+  bit for bit against a transcription of the reference kernel and an independent e4m3 grid rounding.
+  No speed or quality effect is claimed; nothing is measured on GB10 yet. Credits: DeepSeek (the
+  reference change), 05yuki ([SGLang #45185](https://github.com/sgl-project/sglang/pull/45185), the
+  same step in SGLang, open) and christopherowen
+  ([spark-ds41f](https://github.com/christopherowen/spark-ds41f), which adopted it in its vLLM recipe).
 
 - Drop the SGLang #45251 grouped static-verify indexer backport: it hung every TP rank in decode
   on a greedy `/generate` with `return_logprob` (the 18,000-token code text of the long KL panel),
