@@ -24,6 +24,7 @@ PATCH_DSV41_WINDOW_HISTORY_SRC="$ROOT/patches/sglang-45579-window-history-src.pa
 PATCH_DSV41_FUSED_WINDOW_LAYOUT="$ROOT/patches/sglang-45726-fused-window-layout-integration.patch"
 PATCH_DSV41_IDLE_SWA_STORE="$ROOT/patches/sglang-45586-45699-idle-swa-store.patch"
 PATCH_DSV41_GROUPED_VERIFY_INDEXER="$ROOT/patches/sglang-45251-grouped-verify-indexer.patch"
+PATCH_DSV41_DRAFT_METADATA_GLUE="$ROOT/patches/sglang-45450-draft-metadata-glue.patch"
 PARALLEL_ENCODE_REF="fba3ad4b1f4563143f3352beb148c4c28d4be9ed"
 PARALLEL_ENCODE_SHA256="722cc41b1096977af3bda6c505e7c629b9b8f7308174cda1c7d2c44f9b54c097"
 PARALLEL_ENCODE_TEST_SHA256="fa1adf5c9b51fdf25cb7998e963a7de905c58cb5aa35395cf16d6c75422ecf9e"
@@ -60,6 +61,8 @@ DSV41_IDLE_STORE_REF="66366028d2dd259372df5066d7c809b4460b8f05"
 DSV41_IDLE_SWA_STORE_PATCH_SHA256="887219d9ca62158e567fd320b6ba26e109cee2d034f0514d4d0ee53ec2f1196f"
 DSV41_GROUPED_VERIFY_INDEXER_REF="476fe86a12535173ea0eee1e849f80e350cc6ffd"
 DSV41_GROUPED_VERIFY_INDEXER_PATCH_SHA256="4dbf4800751ed7fa2c324ea594bf9211db203f33a9fa151b83a48ce07cc7f0d3"
+DSV41_DRAFT_METADATA_GLUE_REF="1f8e4f3e6cdc378d94a8a08630a9763c648e88eb"
+DSV41_DRAFT_METADATA_GLUE_PATCH_SHA256="cc4d32729b31be42f1446d1cd458fa9c799f2ab175797821858781075f52ae8d"
 mkdir -p "$DST"
 cd "$DST"
 rm -rf python upstream-tests src.tgz
@@ -208,6 +211,12 @@ patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_GROUPED_VERIFY_INDEXER"
 patch --silent --fuzz=0 -p1 < "$PATCH_DSV41_GROUPED_VERIFY_INDEXER"
 python3 "$ROOT/scripts/verify_sglang_dsv41_grouped_verify_indexer.py" "$DST/python"
 python3 "$ROOT/scripts/test_sglang_dsv41_grouped_verify_indexer.py" "$DST/python"
+echo "applying SGLang #45450 DSpark draft metadata glue ..."
+printf '%s  %s\n' "$DSV41_DRAFT_METADATA_GLUE_PATCH_SHA256" "$PATCH_DSV41_DRAFT_METADATA_GLUE" | shasum -a 256 -c -
+patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_DRAFT_METADATA_GLUE"
+patch --silent --fuzz=0 -p1 < "$PATCH_DSV41_DRAFT_METADATA_GLUE"
+python3 "$ROOT/scripts/verify_sglang_dsv41_draft_metadata_glue.py" "$DST/python"
+python3 "$ROOT/scripts/test_sglang_dsv41_draft_metadata_glue.py" "$DST/python"
 echo "$REF" > REF
 printf '%s\n' \
   "41303 ed8c3139f1f643544b68102cf8c44504e5e55e3d" \
@@ -230,6 +239,7 @@ printf '%s\n' \
   "45579 $DSV41_WINDOW_HISTORY_SRC_REF patch-sha256=$DSV41_WINDOW_HISTORY_SRC_PATCH_SHA256" \
   "45726 $DSV41_FUSED_WINDOW_LAYOUT_REF helper-sha256=$DSV41_FUSED_WINDOW_LAYOUT_SHA256 integration-patch-sha256=$DSV41_FUSED_WINDOW_LAYOUT_PATCH_SHA256" \
   "45586 $DSV41_IDLE_WINDOW_REF 45699 $DSV41_IDLE_STORE_REF patch-sha256=$DSV41_IDLE_SWA_STORE_PATCH_SHA256" \
-  "45251 $DSV41_GROUPED_VERIFY_INDEXER_REF patch-sha256=$DSV41_GROUPED_VERIFY_INDEXER_PATCH_SHA256" > PATCHES
+  "45251 $DSV41_GROUPED_VERIFY_INDEXER_REF patch-sha256=$DSV41_GROUPED_VERIFY_INDEXER_PATCH_SHA256" \
+  "45450-draft-glue $DSV41_DRAFT_METADATA_GLUE_REF patch-sha256=$DSV41_DRAFT_METADATA_GLUE_PATCH_SHA256" > PATCHES
 du -sh python
-echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804/#45579/#45726/#45586/#45699/#45251 backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."
+echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804/#45579/#45726/#45586/#45699/#45251/#45450-draft-glue backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."
