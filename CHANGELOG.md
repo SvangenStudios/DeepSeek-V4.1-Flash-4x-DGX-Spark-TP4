@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `DSV41_WO_A_INPUT_FP8` measured on the fleet (v2.5 image, production profile, same boot protocol,
+  flag on vs off): sparkDash prose / code c1 85.4 / 140.3 vs 88.6 / 144.9, speedbench all 85.1 vs
+  85.9; qeval 71/75, T>0 scan 0/35 and the KL panels pass either way; the GPU unit test passes with
+  the hardware and the emulated e4m3 rounding. No quality difference our evals can see, ~3 % slower
+  decode: it stays off by default.
+
 ## 2026-10-22 v2.5
 
 Production profile = the v2.4 lever set again, now on an image with the issue #16 backport, the
