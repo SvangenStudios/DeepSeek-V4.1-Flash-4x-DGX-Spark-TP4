@@ -58,7 +58,8 @@ jobs:
             tests/test_b12x_memory_requirements.py \
             tests/test_roce_ring.py \
             tests/test_remote_dotenv.py \
-            tests/test_upstream_launcher_ports.py
+            tests/test_upstream_launcher_ports.py \
+            tests/test_adapter_engine_pins.py
       - name: Syntax checks
         run: |
           python3 -m py_compile \
