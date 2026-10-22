@@ -4,7 +4,7 @@
 
 ## Current results
 
-Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251), the "Production profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) at `517efab`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. Speculative decoding makes tok/s depend on the generated text, so the official checkpoint and other DeepSeek releases give somewhat different numbers on the same prompts.
+Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251), the "Production profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`deepseek-ai/DeepSeek-V4.1-Flash-1017`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) at `1bae0e1`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. The abliterated variant of the same checkpoint is a second weights profile in `.env.tp4.example`; its numbers on the same image, profile and protocol follow each table. Speculative decoding makes tok/s depend on the generated text, so other DeepSeek releases give somewhat different numbers on the same prompts.
 
 ### sparkDash 1.8.8
 
@@ -14,30 +14,33 @@ Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b`
 
 | prompt type | c1 | c2 | c4 | c8 | c16 |
 |---|---:|---:|---:|---:|---:|
-| prose | **88.6** | 124.7 (63.1) | 170.1 (44.0) | 235.0 (31.1) | 337.6 (21.9) |
-| code | 144.9 | 181.2 (91.6) | 242.8 (64.9) | 313.1 (41.4) | 456.9 (30.4) |
-| structured | 158.4 | 216.3 (112.1) | 221.0 (73.2) | 272.8 (41.5) | 377.5 (32.1) |
-| json | 128.1 | 181.7 (91.7) | 304.2 (77.6) | 471.0 (61.0) | 690.1 (45.1) |
+| prose | **91.0** | 114.8 (58.0) | 169.4 (43.7) | 232.9 (30.6) | 343.3 (23.0) |
+| code | 140.3 | 182.0 (92.1) | 248.1 (64.4) | 321.6 (42.8) | 454.9 (30.7) |
+| structured | 159.7 | 219.8 (113.3) | 214.4 (66.9) | 238.7 (39.6) | 373.3 (33.2) |
+| json | 130.5 | 179.5 (93.3) | 318.1 (81.1) | 444.6 (57.6) | 694.3 (45.2) |
 
 **Prefill, cold, tok/s**
 
 | 4k | 16k | 32k | 64k | 128k |
 |---:|---:|---:|---:|---:|
-| 4855 | 5957 | 6043 | 6164 | 6214 |
+| 4798 | 5976 | 6196 | 6241 | 6291 |
 
-**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 88.1 / 89.1 / 88.6; code 134.8 / 144.9 / 144.9; structured 155.2 / 159.7 / 158.4; json 125.8 / 131.1 / 128.1). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
+Abliterated checkpoint ([`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) `517efab`), same image, profile and protocol, c1: prose 88.6, code 144.9, structured 158.4, json 128.1; c16 aggregate: prose 337.6, code 456.9; prefill 4k-128k 4855-6214 tok/s. Its edit touches only `attn.wo_b` and `shared_experts.w2` of the main layers (the DSpark draft layers are identical), so the two run within a few percent of each other.
+
+**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 91.1 / 91.0 / 89.8; code 137.5 / 140.4 / 143.4; structured 152.5 / 160.8 / 159.7; json 127.8 / 131.1 / 130.5). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
 
 ### speedbench
 
 [speedbench](https://github.com/knapcio/speedbench) 0.3 (`6733653`), full mode: 73 frozen prompts in six categories (prompt set speedbench-v1), c1, temperature 0, 256 output tokens, thinking off, run on the head against `127.0.0.1:8888`. Decode tok/s, geometric mean over the prompts of each category:
 
-| Category | prose | code | structured | agentic | multilingual | long context | all 73 prompts |
+| tok/s | prose | code | structured | agentic | multilingual | long context | all 73 prompts |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| tok/s | 63.3 | 108.7 | 103.2 | 97.3 | 67.7 | 89.9 | 85.9 |
+| official 1017 | 63.9 | 105.4 | 107.4 | 96.9 | 69.0 | 88.3 | 86.1 |
+| abliterated | 63.3 | 108.7 | 103.2 | 97.3 | 67.7 | 89.9 | 85.9 |
 
-Median time to first token 219 ms; 73 of 73 prompts valid, none failed.
+Median time to first token 218 ms (abliterated 219 ms); 73 of 73 prompts valid on both, none failed.
 
-**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 388k tokens (passphrase at 50 % depth; 22 s and 71 s); cold prefill of a 387K-token varied-text prompt 68.2 s (5,677 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; `ds_gate.py kld` long and short panels (native `/generate` with top-10 logprobs, 16.5k-40k-token prompts) against the stable 1017 image: continuation KL 0.0062 and 0.0061, PASS. Issue #16 accelerated reproducer (`scripts/issue16_repro.py`: 190K-900K cached prefixes with 512-4096 fresh tokens, alternating c1/c4): 813 requests in 30 minutes on this boot, 1,445 in 40 minutes on an earlier boot of the same tree, 0 failures, no CUDA error or Xid on any rank ([docs/issue-16-swa-crash.md](docs/issue-16-swa-crash.md)).
+**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 388k tokens (passphrase at 50 % depth; 21 s and 68 s); cold prefill of a 388K-token varied-text prompt 67.4 s (5,749 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; native `/generate` with top-10 logprobs on 16.5k-40k-token prompts answered. The abliterated boot passed the same checks (qeval 71/75 with the same split, cold 388K 68.2 s), plus `ds_gate.py kld` long and short panels against the stable 1017 image (continuation KL 0.0062 / 0.0061) and the issue #16 accelerated reproducer (`scripts/issue16_repro.py`: 190K-900K cached prefixes with 512-4096 fresh tokens, alternating c1/c4): 813 requests in 30 minutes, 1,445 in 40 minutes on an earlier boot of the same tree, 0 failures, no CUDA error or Xid on any rank ([docs/issue-16-swa-crash.md](docs/issue-16-swa-crash.md)).
 
 **Fixed: logprob decode hang.** Images built from `57a9888` and earlier main commits hang every rank on a greedy native `/generate` with `return_logprob` on long code prompts. The cause was the SGLang #45251 backport, now removed; see the CHANGELOG.
 
@@ -104,7 +107,7 @@ Everything else (memory fraction 0.80, 8M-token KV pin, 1M context, NFS/Engram l
 | Driver / runtime | NVIDIA driver 580.x with `nvidia-smi` on every node, plus **nvidia-container-toolkit** (every `docker run` uses `--gpus all`) |
 | Docker | Engine on every node, usable without `sudo` (including `docker volume`); containers run with `--privileged`, `--ipc host`, `--shm-size` and `--ulimit memlock=-1` |
 | Host CLI (head) | `python3` with `pexpect` (`scripts/remote.py`), `ssh` to every worker with the key at `SSH_IDENTITY` (and its `.pub` next to it), `rsync` (build pushes the tree to the workers), `curl`, `tar`, `base64`, and `rpcinfo` (`nfs-common`) while `NFS_SHARE=1` |
-| Weights | `deepseek-ai/DeepSeek-V4.1-Flash` at the pinned revision: 476 GiB, 48 shards. `./start-tp4.sh download` fetches it on the head with the `hf` CLI (`pip install -U "huggingface_hub[cli]"`); the switched profile shares the head's copy over NFS, the ring profile keeps a copy on every node |
+| Weights | `deepseek-ai/DeepSeek-V4.1-Flash-1017` (or its abliterated variant, see `.env.tp4.example`) at the pinned revision: 476 GiB, 48 shards. `./start-tp4.sh download` fetches it on the head with the `hf` CLI (`pip install -U "huggingface_hub[cli]"`); the switched profile shares the head's copy over NFS, the ring profile keeps a copy on every node |
 | Disk | head: 476 GiB for the checkpoint; every node: ~48 GiB of packed Engram rows (`pack`, TP4) and ~49 GB for the image |
 | Ports | 8888 (API), 20000 (torch distributed init), and 2049/111 (NFS, only with `NFS_SHARE=1`) between the nodes |
 | Credentials | none for the weights. An empty `API_KEY` (or `none`, `off`, `dummy`, `0`) leaves the endpoint open, so keep the port private when it is unset |
@@ -210,7 +213,7 @@ Other work this profile builds on:
 - **alphabetc1**, [SGLang #45726](https://github.com/sgl-project/sglang/pull/45726) merge [`9d5386fd`](https://github.com/sgl-project/sglang/commit/9d5386fd13f7a91e9e84dc0c0ab61c5b1fbaba98): fuse CUDA request-window query and history metadata construction into two Triton kernels. The exact upstream kernel is content-pinned; only its older-tree call site is adapted locally.
 - **hnyls2002**, [SGLang #45586](https://github.com/sgl-project/sglang/pull/45586) and [#45699](https://github.com/sgl-project/sglang/pull/45699): route idle SWA stores before reading stale/unset attention metadata, using a cached idle request-window layout when encoder replay is enabled and the translated dummy slot otherwise.
 - **Divy (divyvasal) and Claude Opus 5.5**, [SGLang #44923](https://github.com/sgl-project/sglang/pull/44923) commit [`6e0355d9`](https://github.com/sgl-project/sglang/commit/6e0355d972cb926f137d2b8bb70caf5c9af5d129): keep per-row greedy flags on the host and recompute `is_all_greedy` / `is_any_greedy` when finished requests leave the batch, so a greedy decode batch that once held a sampled request returns to DSpark's folded verify path instead of staying on the eager accept path until it drains. Ported from the open PR with `patches/sglang-44923-greedy-flags-refresh.patch`; not yet measured on GB10.
-- **DeepSeek**, [`inference/model.py` revision `4dd75a8b`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/commit/4dd75a8b448d95ae8e284d5c5a1e4b8808bd583b) of DeepSeek-V4.1-Flash (2026-10-12; the same code ships with [DeepSeek-V4.1-Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017)): the reference rounds the attention output to FP8 (32-value blocks, power-of-two scales) before `wo_a`, in the target and the DSpark draft attention. Mirrored by the opt-in `adapter/wo_a_input_fp8.py` (`DSV41_WO_A_INPUT_FP8=1`, off by default, not yet measured on GB10).
+- **DeepSeek**, [`inference/model.py` revision `4dd75a8b`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/commit/4dd75a8b448d95ae8e284d5c5a1e4b8808bd583b) of DeepSeek-V4.1-Flash (2026-10-12; the same code ships with [DeepSeek-V4.1-Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017)): the reference rounds the attention output to FP8 (32-value blocks, power-of-two scales) before `wo_a`, in the target and the DSpark draft attention. Mirrored by the opt-in `adapter/wo_a_input_fp8.py` (`DSV41_WO_A_INPUT_FP8=1`, off by default: measured ~3 % slower decode with the same eval results).
 - **05yuki**, [SGLang #45185](https://github.com/sgl-project/sglang/pull/45185) (open): the same quantize-dequantize of `o` before the bf16 `wo_a` in SGLang's V4 attention and DSpark draft, including the fp32 emulation of the e4m3 rounding that `DSV41_WO_A_INPUT_FP8_EMULATE=1` follows.
 - **christopherowen**, [spark-ds41f](https://github.com/christopherowen/spark-ds41f): adopted the reference's WO-A input quantization in its vLLM recipe for DGX Spark (first inside the W8A16 GEMM's tile load, then in the sparse MLA kernels' output store), which pointed us to the change.
 - **hushengkai**, for independently reproducing the EP2 / Engram cache / shared-expert padding changes on a second 4x GB10 fleet.

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Two weights profiles in `.env.tp4.example`: the official `deepseek-ai/DeepSeek-V4.1-Flash-1017`
+  (`1bae0e1`, now the default `HF_REPO`/`HF_REVISION`, `MODEL_DIR` and NFS names) and the
+  abliterated `mrfakename/DeepSeek-V4.1-Flash-1017-abliterated` (`517efab`); the original V4.1
+  release stays as a commented option. Measured on the v2.5 image and production profile, same
+  protocol: official prose / code / structured / json c1 91.0 / 140.3 / 159.7 / 130.5, speedbench
+  all 86.1; abliterated 88.6 / 144.9 / 158.4 / 128.1, 85.9. README now leads with the official
+  checkpoint and lists both.
+
 - `DSV41_WO_A_INPUT_FP8` measured on the fleet (v2.5 image, production profile, same boot protocol,
   flag on vs off): sparkDash prose / code c1 85.4 / 140.3 vs 88.6 / 144.9, speedbench all 85.1 vs
   85.9; qeval 71/75, T>0 scan 0/35 and the KL panels pass either way; the GPU unit test passes with
