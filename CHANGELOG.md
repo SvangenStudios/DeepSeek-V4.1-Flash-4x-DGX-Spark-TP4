@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Refine #45762 with potoior's SGLang #45804: only the native DeepSeek
+  `dsv4`/`dsv41`/`dsv32` encoders inherit `SGLANG_DEFAULT_THINKING` on the
+  response-parsing side. Jinja-driven models no longer receive that unrelated
+  default, and the Responses API now mirrors Chat. Explicit request toggles
+  remain authoritative in both APIs. The follow-up is applied after #45762 so
+  the exact scope correction is reviewable and both intermediate and final
+  semantics are tested.
 - Backport Yangmin Li's merged SGLang #45630 commit (`741aea0a`): startup
   autotuning may now select its measured FlashInfer CuTeDSL MXFP8 tactic for
   block-FP8 linears at decode and verify row counts, instead of forcing the
