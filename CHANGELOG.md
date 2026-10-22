@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Adapt hnyls2002's merged SGLang #45586 and #45699 idle-store fixes. An idle
+  forward now returns before reading stale or unset attention metadata: with an
+  encoder-replay request window it activates a cached idle layout of the right
+  row count; otherwise it writes the translated dummy SWA slot. Upstream's
+  original encoder-replay/DSpark repro crashed at 197/200 requests and completed
+  200/200 after the fix. Non-idle routing is unchanged.
 - Vendor alphabetc1's exact merged SGLang #45726 Triton kernel and adapt only
   its CUDA call site to the pinned request-window layout. Two kernels replace
   the eager pointwise construction of query indices/lengths/commit masks and
