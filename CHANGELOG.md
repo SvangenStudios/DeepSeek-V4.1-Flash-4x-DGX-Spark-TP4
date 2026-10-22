@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Adapt hnyls2002's merged SGLang #45579 to the pinned request-window
+  implementation: each prefill layout computes the source row for every SWA
+  history slot once, carries it through graph replay refreshes, and all layers
+  reuse that tensor instead of rebuilding it. The row formula and zero-row
+  fallback are unchanged. Upstream observed this bookkeeping in 1.7-4.8% of
+  scheduler-thread time on GB300 prefill, but did not isolate the end-to-end
+  gain; this remains a source-qualified prefill optimization pending GB10 A/B.
 - Refine #45762 with potoior's SGLang #45804: only the native DeepSeek
   `dsv4`/`dsv41`/`dsv32` encoders inherit `SGLANG_DEFAULT_THINKING` on the
   response-parsing side. Jinja-driven models no longer receive that unrelated

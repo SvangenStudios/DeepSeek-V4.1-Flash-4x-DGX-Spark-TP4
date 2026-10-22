@@ -20,6 +20,7 @@ PATCH_DSV41_BLOCKED_DEQUANT="$ROOT/patches/sglang-45793-dsv41-blocked-kv-dequant
 PATCH_DSV41_ALIGN_WIDTH="$ROOT/patches/sglang-45794-dsv41-align-indexer-width.patch"
 PATCH_DSV41_DEFAULT_THINKING="$ROOT/patches/sglang-45762-dsv41-default-thinking-parser.patch"
 PATCH_DSV41_THINKING_PARITY="$ROOT/patches/sglang-45804-dsv41-thinking-parity.patch"
+PATCH_DSV41_WINDOW_HISTORY_SRC="$ROOT/patches/sglang-45579-window-history-src.patch"
 PARALLEL_ENCODE_REF="fba3ad4b1f4563143f3352beb148c4c28d4be9ed"
 PARALLEL_ENCODE_SHA256="722cc41b1096977af3bda6c505e7c629b9b8f7308174cda1c7d2c44f9b54c097"
 PARALLEL_ENCODE_TEST_SHA256="fa1adf5c9b51fdf25cb7998e963a7de905c58cb5aa35395cf16d6c75422ecf9e"
@@ -46,6 +47,8 @@ DSV41_DEFAULT_THINKING_REF="f2aad50c4163d047d740fd61defea2d122ac5d30"
 DSV41_DEFAULT_THINKING_PATCH_SHA256="97d324a27255233defa8ee343a0df2b2c63785e919ce69b60696289277e5df66"
 DSV41_THINKING_PARITY_REF="af882cfe1e7ff244db2a49bb70fdc72199c68bb9"
 DSV41_THINKING_PARITY_PATCH_SHA256="47363e10d91939b906bb269ebcd2eb428142930c92c4c04643fba95475f3863c"
+DSV41_WINDOW_HISTORY_SRC_REF="ad55c50bc3a45bdf957626eb0a9350ca0f4f5176"
+DSV41_WINDOW_HISTORY_SRC_PATCH_SHA256="85241d8d32c5e80b746811b00ee3e870c33e15d71206063568a389f77caf16ef"
 mkdir -p "$DST"
 cd "$DST"
 rm -rf python upstream-tests src.tgz
@@ -165,6 +168,12 @@ patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_THINKING_PARITY"
 patch --silent --fuzz=0 -p1 < "$PATCH_DSV41_THINKING_PARITY"
 python3 "$ROOT/scripts/verify_sglang_dsv41_thinking_parity.py" "$DST/python"
 python3 "$ROOT/scripts/test_sglang_dsv41_thinking_parity.py" "$DST/python"
+echo "applying SGLang #45579 request-window history-source reuse ..."
+printf '%s  %s\n' "$DSV41_WINDOW_HISTORY_SRC_PATCH_SHA256" "$PATCH_DSV41_WINDOW_HISTORY_SRC" | shasum -a 256 -c -
+patch --dry-run --silent --fuzz=0 -p1 < "$PATCH_DSV41_WINDOW_HISTORY_SRC"
+patch --silent --fuzz=0 -p1 < "$PATCH_DSV41_WINDOW_HISTORY_SRC"
+python3 "$ROOT/scripts/verify_sglang_dsv41_window_history_src.py" "$DST/python"
+python3 "$ROOT/scripts/test_sglang_dsv41_window_history_src.py"
 echo "$REF" > REF
 printf '%s\n' \
   "41303 ed8c3139f1f643544b68102cf8c44504e5e55e3d" \
@@ -183,6 +192,7 @@ printf '%s\n' \
   "45793 $DSV41_BLOCKED_DEQUANT_REF patch-sha256=$DSV41_BLOCKED_DEQUANT_PATCH_SHA256" \
   "45794 $DSV41_ALIGN_WIDTH_REF patch-sha256=$DSV41_ALIGN_WIDTH_PATCH_SHA256" \
   "45762 $DSV41_DEFAULT_THINKING_REF patch-sha256=$DSV41_DEFAULT_THINKING_PATCH_SHA256" \
-  "45804 $DSV41_THINKING_PARITY_REF patch-sha256=$DSV41_THINKING_PARITY_PATCH_SHA256" > PATCHES
+  "45804 $DSV41_THINKING_PARITY_REF patch-sha256=$DSV41_THINKING_PARITY_PATCH_SHA256" \
+  "45579 $DSV41_WINDOW_HISTORY_SRC_REF patch-sha256=$DSV41_WINDOW_HISTORY_SRC_PATCH_SHA256" > PATCHES
 du -sh python
-echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804 backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."
+echo "staged $DST/python (ref $REF + SGLang #41303/#42901/#44001/#41259/#45410/#43549/#45457/#45458/#45663/#45518/#45450/#45630/#45745/#45793/#45794/#45762/#45804/#45579 backports); now: docker build -f Dockerfile.canary -t dsv41-4x-spark:canary ."

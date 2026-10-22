@@ -32,6 +32,13 @@ sgl-project/sglang, DeepGEMM, b12x, HuggingFace and the other public Spark recip
 - SGLang #45804 supersedes the broad parser-family fallback in #45762: the env default belongs only to
   native DeepSeek encoders, and Responses must mirror Chat. The scoped three-file adaptation is carried
   after #45762 with a negative Jinja control; it is a correctness fix, not a performance claim.
+- SGLang #45579 has a bounded seam in the older request-window implementation and is carried: compute
+  SWA history source rows once per prefill layout, copy them during graph refresh and reuse them across
+  layers. Upstream profiling puts the replaced bookkeeping at 1.7-4.8% of scheduler-thread time on its
+  GB300 prefill workloads, but it did not isolate end-to-end gain and this is not a decode/C1 claim.
+- SGLang #45577/#45741 index-K plan reuse depends on the newer modular `v41_indexer` plan types absent
+  from this pin. #44465 sharded accept is still an AMD/HIP draft and the served greedy path already uses
+  TP-sharded greedy selection. Both remain HOLD/watch rather than being copied across incompatible APIs.
 - MiaAI-Lab's latest public recipe head (`64b02de`, 2026-10-17) adds switchless TP4 packaging and safety
   work but no newer decode lever missing from this repository. J-M's Round-2 SGLang sweep found a 1 GiB
   indexer-logits budget useful for memory robustness, while its scheduling changes did not improve decode.
