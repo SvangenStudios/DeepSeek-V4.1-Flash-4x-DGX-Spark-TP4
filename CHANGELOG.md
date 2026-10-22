@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- Fix `DSV41_PREFILL_SP=1` on the current canary images. The adapter hash-pins
+  the engine functions it copies or wraps; the #42901 layer-20 tail (PR #24)
+  and #45301 (PR #48) changed two of them, so the adapter refused at import and
+  the head died about 20 s into boot. The prefill-SP layer loop now follows
+  #42901: the last KV-source layer gathers every row and writes full-prompt
+  compressed KV before the tail, as the stock loop does (checked against the
+  stock loop: exact mode identical, fast mode identical to P0). The SP region
+  is now layers 0-19. A new image-build test imports the model with every
+  adapter flag of `.env.tp4.example` on, so a pinned function that drifts fails
+  the build instead of the boot.
+- The canary images point rustup at an unreachable dist server, so the
+  `cargo --version` probe of the image preprocessor fails at once instead of
+  holding a rank before torch distributed init (one rank waited 7 minutes).
+- `stop.sh` keeps the shared `dsv41-nfs` exporter. Removing it left the worker
+  NFS volumes without a server, and the next stop hung on them.
+- The image builds again: two source verifiers followed the #45457 DSV4.1
+  encode wrapper and the #45726 layout order, and the packaging tests' inputs
+  are copied into the image.
+- README: current results (sparkDash and speedbench) of this image on the
+  conservative profile; the v2.4 table moved to `docs/history.md`.
+
 - Backport maocheng23 and Claude Opus 5.5's merged SGLang #43448
   (`42228038`). When chunked prefill is disabled or unset, V4.1 MHC kernel
   prewarm now derives its token buckets from `max_prefill_tokens` instead of a
