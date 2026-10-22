@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Adapt kpham-sgl's merged SGLang #45251 for the pinned V4.1 indexer: static
+  DSpark verification groups the six query rows belonging to one request before
+  each full cache scan, so the paged index-K cache is traversed per request
+  instead of once per draft row. Ragged verification and ordinary
+  decode/prefill keep the original one-row layout. Upstream measured four
+  128K-context scans at 1.27 to 0.47 ms and a DSpark cycle at 22.57 to 21.57 ms
+  at concurrency 64; this is a long-context/concurrency canary, not a local
+  GB10 or C1 performance claim.
 - Adapt hnyls2002's merged SGLang #45586 and #45699 idle-store fixes. An idle
   forward now returns before reading stale or unset attention metadata: with an
   encoder-replay request window it activates a cached idle layout of the right

@@ -1,0 +1,196 @@
+--- a/python/sglang/srt/layers/attention/dsv4/metadata.py
++++ b/python/sglang/srt/layers/attention/dsv4/metadata.py
+@@ -122,6 +122,9 @@
+     # Rows per logits chunk for the prefill CUDA graph low-ratio indexer; 0 plans
+     # all rows at once. Chunk plans are stacked so replay can copy them in place.
+     row_chunk: int = 0
++    # Consecutive query rows belonging to one request. Static DSpark verify can
++    # group its full draft block so DeepGEMM reuses each request's index-K pages.
++    rows_per_request: int = 1
+     deep_gemm_metadata: Any = field(init=False, repr=False)
+     topk_metadata: torch.Tensor = field(init=False, repr=False)
+     nonpaged_plan: Optional[NonPagedIndexerPlan] = field(
+@@ -136,9 +139,15 @@
+         else:
+             import deep_gemm
+ 
+-            use_jit_indexer = not self.force_deep_gemm_metadata and (
+-                envs.SGLANG_OPT_USE_JIT_INDEXER_METADATA.get()
+-                or self.compressed_seq_lens.numel() > _LARGE_INDEXER_QUERY_THRESHOLD
++            group = self.rows_per_request
++            use_jit_indexer = (
++                not self.force_deep_gemm_metadata
++                and group == 1
++                and (
++                    envs.SGLANG_OPT_USE_JIT_INDEXER_METADATA.get()
++                    or self.compressed_seq_lens.numel()
++                    > _LARGE_INDEXER_QUERY_THRESHOLD
++                )
+             )
+             if use_jit_indexer:
+                 from sglang.kernels.ops.attention.dsv4 import (
+@@ -150,11 +159,19 @@
+             compressed_seq_lens = self.compressed_seq_lens.to(torch.int32)
+             if compressed_seq_lens.dim() == 1:
+                 compressed_seq_lens = compressed_seq_lens.unsqueeze(-1)
++            num_rows = compressed_seq_lens.shape[0]
++            if group > 1:
++                assert compressed_seq_lens.shape[1] == 1 and num_rows % group == 0, (
++                    f"{num_rows} query rows do not group by {group}"
++                )
+             if self.row_chunk > 0:
++                assert self.row_chunk % group == 0
+                 self.deep_gemm_metadata = torch.stack(
+                     [
+                         get_paged_mqa_logits_metadata(
+-                            compressed_seq_lens[_s : _s + self.row_chunk],
++                            compressed_seq_lens[
++                                _s : _s + self.row_chunk
++                            ].view(-1, group),
+                             self.compressed_page_size,
+                             deep_gemm.get_num_sms(),
+                         )
+@@ -163,19 +180,20 @@
+                 )
+             elif _IS_SM120 and compressed_seq_lens.shape[0] > _SM120_INDEXER_M_CHUNK:
+                 # Chunk metadata is shared by all indexer layers in this forward.
++                chunk = _SM120_INDEXER_M_CHUNK // group * group
+                 self.deep_gemm_metadata = [
+                     get_paged_mqa_logits_metadata(
+-                        compressed_seq_lens[_s : _s + _SM120_INDEXER_M_CHUNK],
++                        compressed_seq_lens[_s : _s + chunk].view(-1, group),
+                         self.compressed_page_size,
+                         deep_gemm.get_num_sms(),
+                     )
+                     for _s in range(
+-                        0, compressed_seq_lens.shape[0], _SM120_INDEXER_M_CHUNK
++                        0, compressed_seq_lens.shape[0], chunk
+                     )
+                 ]
+             else:
+                 self.deep_gemm_metadata = get_paged_mqa_logits_metadata(
+-                    compressed_seq_lens,
++                    compressed_seq_lens.view(-1, group),
+                     self.compressed_page_size,
+                     deep_gemm.get_num_sms(),
+                 )
+@@ -216,6 +234,25 @@
+             )
+         ]
+
++    def paged_logits_args(
++        self, q, rows=slice(None), *, seq_lens=None, page_table=None
++    ):
++        """Group consecutive static-verify rows for DeepGEMM's ``next_n`` path."""
++        n = self.rows_per_request
++        q_data, q_sf = q if isinstance(q, tuple) else (q, None)
++        q_data = q_data[rows]
++        q_sf = q_sf[rows] if q_sf is not None else None
++        lens = (self.compressed_seq_lens if seq_lens is None else seq_lens)[rows]
++        table = (self.page_table if page_table is None else page_table)[rows]
++        if n > 1:
++            heads, width = q_data.shape[-2:]
++            q_data = q_data.view(-1, n, heads, width)
++            if q_sf is not None:
++                q_sf = q_sf.view(-1, n, heads)
++            lens = lens.view(-1, n)
++            table = table[::n]
++        return (q_data, q_sf) if q_sf is not None else q_data, lens, table
++
+     def copy_(self, other: PagedIndexerMetadata):
+         if is_hip():
+             copy_fields = ["page_table", "compressed_seq_lens"]
+@@ -230,6 +249,7 @@
+                 "compressed_page_size",
+                 "compress_ratio",
+                 "row_chunk",
++                "rows_per_request",
+                 "force_deep_gemm_metadata",
+                 "use_prefill_cuda_graph",
+                 "use_topk_v2",
+--- a/python/sglang/srt/layers/attention/dsv4/candidate_deep_gemm.py
++++ b/python/sglang/srt/layers/attention/dsv4/candidate_deep_gemm.py
+@@ -194,12 +194,15 @@
+         table on the forward metadata."""
+         metadata = inputs.metadata
+         seq_lens = metadata.compressed_seq_lens.reshape(-1)
++        q, grouped_lens, grouped_table = metadata.paged_logits_args(
++            (inputs.q_fp4, inputs.q_sf)
++        )
+         logits = fp4_paged_mqa_logits(
+-            (inputs.q_fp4, inputs.q_sf),
++            q,
+             inputs.k_cache,
+             inputs.weights,
+-            metadata.compressed_seq_lens,
+-            metadata.page_table,
++            grouped_lens,
++            grouped_table,
+             metadata.deep_gemm_metadata,
+             metadata.max_compressed_seq_len,
+         )
+--- a/python/sglang/srt/layers/attention/deepseek_v4_backend.py
++++ b/python/sglang/srt/layers/attention/deepseek_v4_backend.py
+@@ -1364,6 +1364,7 @@
+         *,
+         compress_ratio: int = 4,
+         use_prefill_cuda_graph: bool = False,
++        rows_per_request: int = 1,
+     ):
+         page_table = core_attn_metadata.page_table
+         index_page_size = 0
+@@ -1401,6 +1402,7 @@
+             ),
+             use_prefill_cuda_graph=use_prefill_cuda_graph,
+             compress_ratio=compress_ratio,
++            rows_per_request=rows_per_request,
+         )
+ 
+     def init_forward_metadata_decode(
+@@ -2002,16 +2007,25 @@
+         if c128_compress_metadata is None and self.has_c128:
+             c128_compress_metadata = create(compress_ratio=128)
+         low = core_attn_metadata.low_ratios
++        rows_per_request = 1 if is_ragged else num_draft_tokens
+         return DSV4Metadata(
+             core_attn_metadata,
+             indexer_metadata,
+             c1_indexer_metadata=(
+-                self.init_forward_metadata_indexer(core_attn_metadata, compress_ratio=1)
++                self.init_forward_metadata_indexer(
++                    core_attn_metadata,
++                    compress_ratio=1,
++                    rows_per_request=rows_per_request,
++                )
+                 if 1 in low
+                 else None
+             ),
+             c2_indexer_metadata=(
+-                self.init_forward_metadata_indexer(core_attn_metadata, compress_ratio=2)
++                self.init_forward_metadata_indexer(
++                    core_attn_metadata,
++                    compress_ratio=2,
++                    rows_per_request=rows_per_request,
++                )
+                 if 2 in low
+                 else None
+             ),
+@@ -3559,12 +3573,15 @@
+                 self.candidate_indexer.publish_decode(inputs, page_indices, raw_indices)
+             )
+             return
++        grouped_q, grouped_lens, grouped_table = metadata.paged_logits_args(
++            (q_fp4, q_sf)
++        )
+         logits = fp4_paged_mqa_logits(
+-            (q_fp4, q_sf),
++            grouped_q,
+             k_cache,
+             weights,
+-            metadata.compressed_seq_lens,
+-            metadata.page_table,
++            grouped_lens,
++            grouped_table,
+             metadata.deep_gemm_metadata,
+             metadata.max_compressed_seq_len,
+         )
