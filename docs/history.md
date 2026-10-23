@@ -4,6 +4,19 @@ Every dated table, note and rejected experiment that used to live in the README,
 
 All rows below were taken with sparkDash up to 1.8.6. sparkDash 1.8.7 replaced the code prompts (c1 and the concurrent waves), so the code columns here are not comparable with the README's current table; the prose, structured and prefill prompts are unchanged.
 
+## Production 2026-10-22 (v2.5, image `f9a1de4`, before the NVMe keepalive), sparkDash 1.8.8
+
+The v2.5 README table: official 1017 checkpoint `1bae0e1`, production profile, one fresh boot, same protocol as the current README.
+
+| prompt type | c1 | c2 | c4 | c8 | c16 |
+|---|---:|---:|---:|---:|---:|
+| prose | 91.0 | 114.8 (58.0) | 169.4 (43.7) | 232.9 (30.6) | 343.3 (23.0) |
+| code | 140.3 | 182.0 (92.1) | 248.1 (64.4) | 321.6 (42.8) | 454.9 (30.7) |
+| structured | 159.7 | 219.8 (113.3) | 214.4 (66.9) | 238.7 (39.6) | 373.3 (33.2) |
+| json | 130.5 | 179.5 (93.3) | 318.1 (81.1) | 444.6 (57.6) | 694.3 (45.2) |
+
+c1 runs: prose 91.1 / 91.0 / 89.8; code 137.5 / 140.4 / 143.4; structured 152.5 / 160.8 / 159.7; json 127.8 / 131.1 / 130.5. Abliterated `517efab`, same image: c1 prose 88.6, code 144.9, structured 158.4, json 128.1; c16 prose 337.6, code 456.9. speedbench 0.3 full (prose / code / structured / agentic / multilingual / long context / all): official 63.9 / 105.4 / 107.4 / 96.9 / 69.0 / 88.3 / 86.1, abliterated 63.3 / 108.7 / 103.2 / 97.3 / 67.7 / 89.9 / 85.9; median TTFT 218 / 219 ms. Cold 388K 67.4 s (abliterated 68.2 s); abliterated KL long/short 0.0062 / 0.0061; issue #16 reproducer 813 requests in 30 min (1,445 in 40 min on an earlier boot), 0 failures.
+
 ## Conservative fallback profile 2026-10-22 (1017 checkpoint), sparkDash 1.8.8
 
 Served 2026-10-22 between the issue #16 quarantine and the re-qualification of the v2.4 levers: the "Conservative fallback profile" block of `.env.tp4.example` (v2.1 feature set, 4096-token chunks, memory fraction 0.80), `EP_SIZE=1`, checkpoint `mrfakename/DeepSeek-V4.1-Flash-1017-abliterated` at `517efab`, image of `57a9888` with the SGLang tree of `030813a` (no #45251), GPU clock cap 2200 MHz, one fresh boot, same protocol as the README.

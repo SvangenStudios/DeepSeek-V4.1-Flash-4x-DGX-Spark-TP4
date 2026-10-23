@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Engram NVMe keepalive (`adapter/row_store.cpp`, `DSV41_ENGRAM_KEEPALIVE_MS`, default 25, 0 = off).
+  Under Linux APST the GB10's Samsung drive enters a low-power state after ~100 ms without commands
+  and the next read pays ~10 ms to wake it (bursts of 200 random 4 KiB O_DIRECT reads on 96 threads:
+  150 ms gaps -> median per-burst max 9.7 ms; 40-80 ms gaps -> 0.8-0.9 ms). A c16 decode step is
+  ~145 ms and issues its Engram reads in one burst, so every step paid the wake-up: the pool measured
+  2.0-2.4 ms per read at c16 against ~0.5 ms at c1. While lookups arrived in the last 2 s, a
+  background thread now reads one pseudo-random 4 KiB page of the packed shard every 25 ms (own
+  descriptor and buffer; served rows untouched); an idle server still lets the drive sleep. Fleet
+  A/B/A (v2.5 image, production profile, abliterated 1017, three fresh boots): sparkDash c16 prose
+  342.4 / 342.8 vs 323.5 off, code 476.3 / 477.3 vs 456.1; c4 +0.4-1.7 %; c1 unchanged. Rank-0
+  trace at c16: step 149.2 -> 139.7 / 141.7 ms, layer-1 Engram join 10.5 -> 4.0 ms after the hasher.
+  The thread pins the library (no unload under it), uses a fork-excluded buffer, and a failure to
+  start it leaves serving as before. Test: `tests/test_row_store_keepalive.py`. Full release gate
+  on the final code (abliterated, production profile): sparkDash c1 prose / code / structured / json
+  89.0 / 145.2 / 160.1 / 131.4, c16 prose 355.7, code 479.1; speedbench all 87.6 (85.9 before);
+  needles 124k/388k PASS, cold 388K 69.0 s, qeval 71/75 (same split as v2.5), T > 0 scan
+  0/35, KL long/short 0.0075 / 0.0126 PASS, issue #16 soak 1,018 requests in 30 min, 0 failures,
+  no CUDA error on any rank.
+
 - Two weights profiles in `.env.tp4.example`: the official `deepseek-ai/DeepSeek-V4.1-Flash-1017`
   (`1bae0e1`, now the default `HF_REPO`/`HF_REVISION`, `MODEL_DIR` and NFS names) and the
   abliterated `mrfakename/DeepSeek-V4.1-Flash-1017-abliterated` (`517efab`); the original V4.1
