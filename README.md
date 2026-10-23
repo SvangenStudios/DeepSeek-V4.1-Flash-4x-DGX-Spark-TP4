@@ -4,7 +4,7 @@
 
 ## Current results
 
-Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251), the "Production profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`deepseek-ai/DeepSeek-V4.1-Flash-1017`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) at `1bae0e1`, GPU clock capped at 2200 MHz, measured 2026-10-22 on one fresh boot with the host memory compacted first. The abliterated variant of the same checkpoint is a second weights profile in `.env.tp4.example`; its numbers on the same image, profile and protocol follow each table. Speculative decoding makes tok/s depend on the generated text, so other DeepSeek releases give somewhat different numbers on the same prompts.
+Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b` + the credited backports, without #45251) plus this release's Engram NVMe keepalive (`adapter/row_store.cpp`), the "Production profile" block of [`.env.tp4.example`](.env.tp4.example) with `EP_SIZE=1`, 1M context, checkpoint [`deepseek-ai/DeepSeek-V4.1-Flash-1017`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) at `1bae0e1`, GPU clock capped at 2200 MHz, measured 2026-10-23 on one fresh boot per checkpoint with the host memory compacted first. The abliterated variant of the same checkpoint is a second weights profile in `.env.tp4.example`; its numbers on the same image, profile and protocol follow each table. Speculative decoding makes tok/s depend on the generated text, so other DeepSeek releases give somewhat different numbers on the same prompts.
 
 ### sparkDash 1.8.8
 
@@ -14,20 +14,20 @@ Image `Dockerfile.canary-roce` built from `f9a1de4` (SGLang `dsv4.1` `f80c91a4b`
 
 | prompt type | c1 | c2 | c4 | c8 | c16 |
 |---|---:|---:|---:|---:|---:|
-| prose | **91.0** | 114.8 (58.0) | 169.4 (43.7) | 232.9 (30.6) | 343.3 (23.0) |
-| code | 140.3 | 182.0 (92.1) | 248.1 (64.4) | 321.6 (42.8) | 454.9 (30.7) |
-| structured | 159.7 | 219.8 (113.3) | 214.4 (66.9) | 238.7 (39.6) | 373.3 (33.2) |
-| json | 130.5 | 179.5 (93.3) | 318.1 (81.1) | 444.6 (57.6) | 694.3 (45.2) |
+| prose | **91.3** | 115.0 (58.1) | 174.0 (44.8) | 242.8 (32.0) | 359.7 (24.2) |
+| code | 142.9 | 186.1 (94.1) | 255.2 (66.0) | 341.4 (45.5) | 471.6 (31.9) |
+| structured | 160.8 | 222.2 (114.3) | 215.7 (67.1) | 248.7 (41.7) | 393.5 (35.2) |
+| json | 130.6 | 184.9 (96.3) | 322.8 (82.5) | 461.4 (59.6) | 726.9 (47.2) |
 
-**Prefill, cold, tok/s**
+**Prefill, cold, tok/s** (measured on the same image without the NVMe keepalive, which leaves prefill unchanged: cold 388K 67.8 s with it, 67.4 s without)
 
 | 4k | 16k | 32k | 64k | 128k |
 |---:|---:|---:|---:|---:|
 | 4798 | 5976 | 6196 | 6241 | 6291 |
 
-Abliterated checkpoint ([`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) `517efab`), same image, profile and protocol, c1: prose 88.6, code 144.9, structured 158.4, json 128.1; c16 aggregate: prose 337.6, code 456.9; prefill 4k-128k 4855-6214 tok/s. Its edit touches only `attn.wo_b` and `shared_experts.w2` of the main layers (the DSpark draft layers are identical), so the two run within a few percent of each other.
+Abliterated checkpoint ([`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated) `517efab`), same image, profile and protocol, c1: prose 89.0, code 145.2, structured 160.1, json 131.4; c16 aggregate: prose 355.7, code 479.1; prefill 4k-128k 4855-6214 tok/s. Its edit touches only `attn.wo_b` and `shared_experts.w2` of the main layers (the DSpark draft layers are identical), so the two run within a few percent of each other.
 
-**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 91.1 / 91.0 / 89.8; code 137.5 / 140.4 / 143.4; structured 152.5 / 160.8 / 159.7; json 127.8 / 131.1 / 130.5). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
+**How these were measured.** sparkDash DecodeBench after two discarded warm-up prose c1 runs; c1 is the median of three runs, c4 the median of two, c2 / c8 / c16 one run each (c1 runs: prose 91.2 / 91.4 / 91.3; code 141.7 / 142.9 / 143.3; structured 155.1 / 160.8 / 160.9; json 130.1 / 130.6 / 131.4). sparkDash's prose c1 is a single prompt, and the non-prose types use a different prompt at each concurrency, so per-stream values are not comparable across columns. Prefill: sparkDash prefill bench, cold (salted prompts), after a 4k warm-up, median of the second and third of three runs per length; its filler is one repeated token, so the Engram row cache inflates these numbers ([MiaAI-Lab#21](https://github.com/MiaAI-Lab/DeepSeek-v4.1-Flash-DGX-Sparks/issues/21)).
 
 ### speedbench
 
@@ -35,12 +35,12 @@ Abliterated checkpoint ([`mrfakename/DeepSeek-V4.1-Flash-1017-abliterated`](http
 
 | tok/s | prose | code | structured | agentic | multilingual | long context | all 73 prompts |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| official 1017 | 63.9 | 105.4 | 107.4 | 96.9 | 69.0 | 88.3 | 86.1 |
-| abliterated | 63.3 | 108.7 | 103.2 | 97.3 | 67.7 | 89.9 | 85.9 |
+| official 1017 | 64.7 | 106.8 | 109.5 | 98.3 | 70.0 | 91.0 | 87.5 |
+| abliterated | 64.3 | 110.2 | 105.1 | 100.6 | 68.4 | 92.2 | 87.6 |
 
-Median time to first token 218 ms (abliterated 219 ms); 73 of 73 prompts valid on both, none failed.
+Median time to first token 205 ms (abliterated 208 ms); 73 of 73 prompts valid on both, none failed.
 
-**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 388k tokens (passphrase at 50 % depth; 21 s and 68 s); cold prefill of a 388K-token varied-text prompt 67.4 s (5,749 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; native `/generate` with top-10 logprobs on 16.5k-40k-token prompts answered. The abliterated boot passed the same checks (qeval 71/75 with the same split, cold 388K 68.2 s), plus `ds_gate.py kld` long and short panels against the stable 1017 image (continuation KL 0.0062 / 0.0061) and the issue #16 accelerated reproducer (`scripts/issue16_repro.py`: 190K-900K cached prefixes with 512-4096 fresh tokens, alternating c1/c4): 813 requests in 30 minutes, 1,445 in 40 minutes on an earlier boot of the same tree, 0 failures, no CUDA error or Xid on any rank ([docs/issue-16-swa-crash.md](docs/issue-16-swa-crash.md)).
+**Correctness checks on the same boot.** Needle retrieval PASS at 124k and 388k tokens (passphrase at 50 % depth; 21 s and 68 s); cold prefill of a 388K-token varied-text prompt 67.8 s (5,720 tok/s); `scripts/qeval.py` 71 / 75 (code 24/25, format 7/7, json 6/8, math 13/14, prose 5/5, reason 16/16); T > 0 scan (`ds_gate.py tscan`, 35 outputs) 0 garbled, 0 errors; `/v1/messages` with the image placeholder token in text and with thinking enabled without a budget: both answered; native `/generate` with top-10 logprobs on 16.5k-40k-token prompts answered. The abliterated boot passed the same checks (qeval 71/75 with the same split, cold 388K 69.0 s), plus `ds_gate.py kld` long and short panels against the stable 1017 image (continuation KL 0.0075 / 0.0126) and the issue #16 accelerated reproducer (`scripts/issue16_repro.py`: 190K-900K cached prefixes with 512-4096 fresh tokens, alternating c1/c4): 1,018 requests in 30 minutes, 0 failures, no CUDA error or Xid on any rank ([docs/issue-16-swa-crash.md](docs/issue-16-swa-crash.md)).
 
 **Fixed: logprob decode hang.** Images built from `57a9888` and earlier main commits hang every rank on a greedy native `/generate` with `return_logprob` on long code prompts. The cause was the SGLang #45251 backport, now removed; see the CHANGELOG.
 
@@ -53,7 +53,7 @@ Earlier measurements, including the v2.4 table on the original checkpoint, the p
 | Image | `Dockerfile.canary-roce` | upstream SGLang `dsv4.1` branch at `f80c91a4b` + credited #41303/#42901 backports + rhys101's RoCEnante overlay + all adapters |
 | Slots | `MAX_RUNNING_REQUESTS=16` | adds the c16 tier |
 | Experts | `EP_SIZE=1`, `DSV41_MOE_B12X_NEXT=1`, `DSV41_MOE_B12X_NEXT_DETERMINISTIC=1` | every rank holds a quarter of all 384 experts and the routed MoE runs on b12x main: no expert-group straggler at the MoE all-reduce (all-reduce 5.9 → ~2.6 ms per step), MoE time unchanged. The deterministic reduction (per-slot buffer and a fixed-order sum instead of atomics) costs nothing measurable and makes greedy output bit-identical run to run; its <= 8-row plans use a Triton route planner and zero the barrier words in one fill (bit-identical to b12x's internal planner) |
-| Engram | `DSV41_CACHE_GIB=4`, `DSV41_CACHE_WAYS=16`, `DSV41_ENGRAM_PREFETCH=1` | row cache (67–76 % hits) and row lookups on a side stream, rows bit-identical |
+| Engram | `DSV41_CACHE_GIB=4`, `DSV41_CACHE_WAYS=16`, `DSV41_ENGRAM_PREFETCH=1`, `DSV41_ENGRAM_KEEPALIVE_MS=25` (default) | row cache (67–76 % hits) and row lookups on a side stream, rows bit-identical. While lookups arrive, one 4 KiB read every 25 ms keeps the NVMe drive out of its power-saving states: at c16 the drive slept between steps and each step's row reads paid ~10 ms to wake it (c16 step 149 → 140 ms, +5-6 % c16 aggregate; c1 unchanged) |
 | Draft | `DSPARK_BLOCK_SIZE=5`, `SGLANG_DSPARK_FOLDED_SAMPLING=2` | k=5 wins on code, ties on prose; sampled requests stay in the CUDA graph |
 | Draft sampling | `DSV41_DRAFT_TAU=0.7`, `DSV41_BLOCK_VERIFY=1` | sharper draft proposals and block verification for sampled rows, both exact in distribution |
 | Verify length | `DSV41_VERIFY_CAP=conf:0.1`, `DSV41_ROUTER_LIVE=1` | verifies only the drafts the confidence head expects to survive; the other verify rows reuse the anchor row's experts inside the router kernel, so they read no extra weights; greedy outputs identical |

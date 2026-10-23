@@ -61,6 +61,13 @@ jobs:
             tests/test_remote_dotenv.py \
             tests/test_upstream_launcher_ports.py \
             tests/test_adapter_engine_pins.py
+      - name: Engram row store (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          g++ -O2 -Wall -Wextra -Werror -std=c++17 -shared -fPIC -pthread \
+            adapter/row_store.cpp -o adapter/librow_store.so
+          python3 tests/test_row_store.py
+          ROW_STORE_TEST_DIR="$RUNNER_TEMP" python3 tests/test_row_store_keepalive.py
       - name: Syntax checks
         run: |
           python3 -m py_compile \
